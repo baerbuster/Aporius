@@ -1,0 +1,23 @@
+{
+  "name": "aporius",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/sync-app.mjs",
+    "build:only": "vite build",
+    "build:phone": "APORIUS_PWA=1 vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "compromise": "^14.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0",
+    "vite-plugin-pwa": "^0.20.0"
+  }
+}
