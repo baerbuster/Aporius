@@ -1,3 +1,4 @@
+import { debug } from '../log'
 import { SYSTEM_PROMPT } from './reflection-prompt.js'
 
 // Stage 2 (replacement) — sentence strings → a live, self-sorting list of
@@ -276,7 +277,7 @@ export function createReflectionStream({
 
     // Pure filler → empty reflected → never inserted.
     if (!reflected) {
-      console.log(`[Reflect ${index}] filler, dropped: "${sentence}"`)
+      debug(`[Reflect ${index}] filler, dropped: "${sentence}"`)
       return
     }
 
@@ -290,7 +291,7 @@ export function createReflectionStream({
 
     // Below-threshold entries are never inserted.
     if (profundity < currentThreshold) {
-      console.log(`[Reflect ${index}] below T(${currentThreshold}) score=${profundity}, dropped`)
+      debug(`[Reflect ${index}] below T(${currentThreshold}) score=${profundity}, dropped`)
       return
     }
 

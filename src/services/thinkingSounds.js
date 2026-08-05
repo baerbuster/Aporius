@@ -1,3 +1,4 @@
+import { debug } from '../log'
 // Thinking sounds — the character's connective tissue between reflections.
 //
 // A small pool of murmurs, rendered ONCE per app open and held as object URLs.
@@ -90,7 +91,7 @@ export function prime({ synthesize } = {}) {
       }
     }
     reshuffle()
-    console.log(`[Thinking] ${clips.length}/${PHRASES.length} sounds ready`)
+    debug(`[Thinking] ${clips.length}/${PHRASES.length} sounds ready`)
     return clips
   })()
 

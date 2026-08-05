@@ -18,6 +18,7 @@ import {
   next as nextThinkingSound,
 } from '../../services/thinkingSounds'
 import { playMurmur } from '../../services/murmurPlayer'
+import { debug } from '../../log'
 
 // ─── App states ────────────────────────────────────────────
 // Listening screen: IDLE, BUFFERING
@@ -132,12 +133,12 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
           voiceSettings: REFLECTION_VOICE,
         }),
       onReflected: (entry) =>
-        console.log(`[Reflect ${entry.index}] p=${entry.profundity} "${entry.reflected}"`),
+        debug(`[Reflect ${entry.index}] p=${entry.profundity} "${entry.reflected}"`),
       onAudioReady: (entry) => {
-        console.log(`[Reflect ${entry.index}] audio ready, p=${entry.profundity}`)
+        debug(`[Reflect ${entry.index}] audio ready, p=${entry.profundity}`)
         if (clickAtRef.current && !firstReadyLoggedRef.current) {
           firstReadyLoggedRef.current = true
-          console.log(`[Path B] first clip READY ${sinceClick()}s after click`)
+          debug(`[Path B] first clip READY ${sinceClick()}s after click`)
         }
       },
     })
@@ -185,8 +186,8 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
       })
       .then((withAudio) => {
         if (!withAudio) return
-        console.log('[Reflection list]', reflectionRef.current.getReflections())
-        console.log('[Reflection list — with audio]', withAudio)
+        debug('[Reflection list]', reflectionRef.current.getReflections())
+        debug('[Reflection list — with audio]', withAudio)
       })
       .catch(() => {})
   }
@@ -280,7 +281,7 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
   const playThinkingSound = async (label) => {
     const url = nextThinkingSound()
     if (!url) return false
-    if (label) console.log(`[Path B] ${label} ${sinceClick()}s after click`)
+    if (label) debug(`[Path B] ${label} ${sinceClick()}s after click`)
     await playMurmur(url)
     return true
   }
@@ -322,7 +323,7 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
           claudeDonePromise.then(() => false),
         ])
         if (!arrived) {
-          if (first) console.log('[Path B] no clip to play')
+          if (first) debug('[Path B] no clip to play')
           break
         }
         continue
@@ -339,7 +340,7 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
         lastProfundity !== null &&
         Math.abs(lastProfundity - next.profundity) > THINKING_SOUND_GAP
       ) {
-        console.log(`[Path B] gap ${lastProfundity}→${next.profundity}, thinking`)
+        debug(`[Path B] gap ${lastProfundity}→${next.profundity}, thinking`)
         await playThinkingSound()
         if (abortRef.current) break
       }
@@ -347,9 +348,9 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
       played.add(next.index)
       if (!firstPlayLoggedRef.current) {
         firstPlayLoggedRef.current = true
-        console.log(`[Path B] first clip PLAYING ${sinceClick()}s after click`)
+        debug(`[Path B] first clip PLAYING ${sinceClick()}s after click`)
       }
-      console.log(`[Path B] playing p=${next.profundity} "${next.reflected}"`)
+      debug(`[Path B] playing p=${next.profundity} "${next.reflected}"`)
       await playMurmur(next.audio.url)
       lastProfundity = next.profundity
       first = false
@@ -419,8 +420,8 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
       return
     }
 
-    console.log('[Transcript → Claude]', transcript)
-    console.log(`[Listen stage] ${((performance.now() - listenStart) / 1000).toFixed(2)}s`)
+    debug('[Transcript → Claude]', transcript)
+    debug(`[Listen stage] ${((performance.now() - listenStart) / 1000).toFixed(2)}s`)
 
     // ── 4. Fire Claude immediately in background ───────────
     const currentMessages = JSON.parse(localStorage.getItem('aporius_messages') || '[]')
@@ -454,7 +455,7 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
       return
     }
 
-    console.log(`[Claude stage] ${((performance.now() - claudeStart) / 1000).toFixed(2)}s`)
+    debug(`[Claude stage] ${((performance.now() - claudeStart) / 1000).toFixed(2)}s`)
 
     if (abortRef.current) return
 
@@ -496,7 +497,7 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
     addTurn(transcript, claudeResponse)
     await checkAndSummarize({ apiKey: settings.claudeKey, model: 'claude-sonnet-4-6' })
 
-    console.log(`[Pre-speaking stage] ${((performance.now() - ttsStart) / 1000).toFixed(2)}s`)
+    debug(`[Pre-speaking stage] ${((performance.now() - ttsStart) / 1000).toFixed(2)}s`)
 
     // Claude's render overlapped the tail reflection; let that clip finish
     // before speaking over it.
