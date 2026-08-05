@@ -100,7 +100,7 @@ npm run build      # populates ~/Library/Application Support/Aporius
 
 Then drag `Aporius.app` to the Dock.
 
-`Update Aporius.command`, also at the root, is kept only for muscle memory — it
+`update-aporius.command`, also at the root, is kept only for muscle memory — it
 `cd`s to its own directory and runs `npm run build`, which already syncs.
 
 ## Debugging
