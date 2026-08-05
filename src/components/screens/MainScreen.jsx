@@ -88,7 +88,7 @@ async function synthesizeSpeech({ elevenLabsKey, googleTTSKey, text, voiceSettin
 function statueForState(appState) {
   if (appState === 'PLAYING_AUDIO') return '/exclaimer.png'
   if (THINKING_STATES.has(appState)) return '/thinker.png'
-  return '/Listener.png'
+  return '/listener.png'
 }
 
 // ─── Main component ────────────────────────────────────────
@@ -568,7 +568,7 @@ export default function MainScreen({ settings, onOpenHistory, onOpenSettings }) 
 
   return (
     <div className="main-screen">
-      <img src="/Background.jpg" alt="" className="main-screen__bg" draggable={false} />
+      <img src="/background.jpg" alt="" className="main-screen__bg" draggable={false} />
       <img src={statue} alt="" className="main-screen__statue" draggable={false} />
 
       <div className="main-screen__topbar">

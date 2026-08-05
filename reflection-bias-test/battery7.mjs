@@ -1,11 +1,11 @@
 // Seventh battery — 30 sentences appearing in NO prompt example and in no earlier
-// battery (reflect_haiku.mjs, battery2-6). Battery 6 is burned: six of its
+// battery (reflect-haiku.mjs, battery2-6). Battery 6 is burned: six of its
 // sentences were promoted into the prompt.
 //
-// Run: NODE_TLS_REJECT_UNAUTHORIZED=0 ANTHROPIC_API_KEY=<key> node reflection_bias_test/battery7.mjs
+// Run: NODE_TLS_REJECT_UNAUTHORIZED=0 ANTHROPIC_API_KEY=<key> node reflection-bias-test/battery7.mjs
 import { readFile } from 'node:fs/promises'
 
-const HARNESS = new URL('./reflect_haiku.mjs', import.meta.url)
+const HARNESS = new URL('./reflect-haiku.mjs', import.meta.url)
 const BASE = (await readFile(HARNESS, 'utf8')).match(/const BASE = `([\s\S]*?)`\n/)[1]
 
 const N = Number(process.env.N || 3)

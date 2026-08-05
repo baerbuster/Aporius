@@ -1,15 +1,15 @@
 // Second battery — 30 sentences that appear NOWHERE in the prompt's examples and
-// nowhere in reflect_haiku.mjs. Every case is exact-match judged against a
+// nowhere in reflect-haiku.mjs. Every case is exact-match judged against a
 // hand-authored expected reflection (no regex judging), and the whole set runs
 // N times so stable failures separate from coin flips.
 //
-// Prompt is pulled from reflect_haiku.mjs BASE so this can never drift from the
+// Prompt is pulled from reflect-haiku.mjs BASE so this can never drift from the
 // frozen prompt.
 //
-// Run: NODE_TLS_REJECT_UNAUTHORIZED=0 ANTHROPIC_API_KEY=<key> node reflection_bias_test/battery2.mjs
+// Run: NODE_TLS_REJECT_UNAUTHORIZED=0 ANTHROPIC_API_KEY=<key> node reflection-bias-test/battery2.mjs
 import { readFile } from 'node:fs/promises'
 
-const HARNESS = new URL('./reflect_haiku.mjs', import.meta.url)
+const HARNESS = new URL('./reflect-haiku.mjs', import.meta.url)
 const BASE = (await readFile(HARNESS, 'utf8')).match(/const BASE = `([\s\S]*?)`\n/)[1]
 
 const N = Number(process.env.N || 3)

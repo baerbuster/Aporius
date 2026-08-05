@@ -1,15 +1,15 @@
 // Tenth battery — 30 sentences appearing in NO prompt example and in no earlier
-// battery (reflect_haiku.mjs, battery2-9).
+// battery (reflect-haiku.mjs, battery2-9).
 //
 // Ordinary random mix, matching the composition of batteries 2-8: mostly plain
 // speaker/addressee sentences, a few third parties at natural rate, a few we/us,
 // a few no-person lines, one pure-filler. NOT weighted toward any failure class —
 // difficulty must stay constant across rounds or the pass count means nothing.
 //
-// Run: NODE_TLS_REJECT_UNAUTHORIZED=0 ANTHROPIC_API_KEY=<key> node reflection_bias_test/battery10.mjs
+// Run: NODE_TLS_REJECT_UNAUTHORIZED=0 ANTHROPIC_API_KEY=<key> node reflection-bias-test/battery10.mjs
 import { readFile } from 'node:fs/promises'
 
-const HARNESS = new URL('./reflect_haiku.mjs', import.meta.url)
+const HARNESS = new URL('./reflect-haiku.mjs', import.meta.url)
 const BASE = (await readFile(HARNESS, 'utf8')).match(/const BASE = `([\s\S]*?)`\n/)[1]
 
 const N = Number(process.env.N || 3)

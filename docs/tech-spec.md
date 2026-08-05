@@ -88,8 +88,8 @@ All assets provided as PNGs with transparent backgrounds (black bg in source ima
 
 | Asset              | File              | Used On                |
 |--------------------|-------------------|------------------------|
-| Empty platform     | `blankPlatform.png` | —                    |
-| Listening pose     | `Listener.png`    | Listening Screen       |
+| Empty platform     | `blank-platform.png` | —                    |
+| Listening pose     | `listener.png`    | Listening Screen       |
 | Thinking pose      | `thinker.png`     | Thinking Screen        |
 | Speaking pose      | `exclaimer.png`   | Speaking Screen        |
 
@@ -97,7 +97,7 @@ All assets provided as PNGs with transparent backgrounds (black bg in source ima
 
 | Asset              | File                    | Used On                       |
 |--------------------|-------------------------|-------------------------------|
-| Greek ruins        | `Background.jpg`        | Behind statue on main screens |
+| Greek ruins        | `background.jpg`        | Behind statue on main screens |
 
 ### UI Icons
 
@@ -127,7 +127,7 @@ The laurel wreath and history scroll button should be recreated programmatically
 - Tapping opens the Conversation History screen
 - Reference: `Conversation_History_Button.png`
 
-**Note:** All statue PNGs (Listener.png, thinker.png, exclaimer.png, blankPlatform.png) have transparent backgrounds (alpha channel). If transparency appears missing, the upload pipeline may have stripped it — check the original files.
+**Note:** All statue PNGs (listener.png, thinker.png, exclaimer.png, blank-platform.png) have transparent backgrounds (alpha channel). If transparency appears missing, the upload pipeline may have stripped it — check the original files.
 
 ## 5. UI Screens & Navigation
 

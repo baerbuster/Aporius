@@ -1,14 +1,14 @@
 // Fourth battery — 30 sentences appearing in NO prompt example and in no earlier
-// battery (reflect_haiku.mjs, battery2, battery3). Battery 3 is burned: eight of
+// battery (reflect-haiku.mjs, battery2, battery3). Battery 3 is burned: eight of
 // its sentences were promoted into the prompt.
 //
 // Deliberately keeps 5 no-person sentences (aphorisms with no I/you at all) —
 // battery 3 found those being deleted as filler, which is not a pronoun bug.
 //
-// Run: NODE_TLS_REJECT_UNAUTHORIZED=0 ANTHROPIC_API_KEY=<key> node reflection_bias_test/battery4.mjs
+// Run: NODE_TLS_REJECT_UNAUTHORIZED=0 ANTHROPIC_API_KEY=<key> node reflection-bias-test/battery4.mjs
 import { readFile } from 'node:fs/promises'
 
-const HARNESS = new URL('./reflect_haiku.mjs', import.meta.url)
+const HARNESS = new URL('./reflect-haiku.mjs', import.meta.url)
 const BASE = (await readFile(HARNESS, 'utf8')).match(/const BASE = `([\s\S]*?)`\n/)[1]
 
 const N = Number(process.env.N || 3)

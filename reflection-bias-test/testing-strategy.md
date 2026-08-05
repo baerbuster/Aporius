@@ -20,7 +20,7 @@ reliably: **declarative "You …" sentences come out with "they"**, e.g.
 - So it is a **subject-position heuristic**, not blanket you/they confusion.
 
 ## The metric (why the test set is what it is)
-`SENTENCES` in `reflect_test.mjs` are all **pure second-person** — no speaker "I/me".
+`SENTENCES` in `reflect-test.mjs` are all **pure second-person** — no speaker "I/me".
 Therefore the ONLY correct output pronoun family is I-family, and **any they-family
 token in the output = the bug**, unambiguously. No mixed sentences (they'd need
 manual per-token judging). Bug count = # sentences whose output matches
@@ -30,12 +30,12 @@ Baseline (V0, production prompt): **14 / 15** sentences buggy (only "Do you even
 care?" is right).
 
 ## How to run
-Harness: `reflect_test.mjs` in this folder. Node 18+ (has `fetch`).
+Harness: `reflect-test.mjs` in this folder. Node 18+ (has `fetch`).
 
 ```
-GROQ_KEY=gsk_... node reflect_test.mjs                # V0..V4
-GROQ_KEY=gsk_... VARIANT=V0,V5 node reflect_test.mjs  # subset
-VERIFY_ONLY=1 GROQ_KEY=x node reflect_test.mjs        # confirm prompt surgery, no calls
+GROQ_KEY=gsk_... node reflect-test.mjs                # V0..V4
+GROQ_KEY=gsk_... VARIANT=V0,V5 node reflect-test.mjs  # subset
+VERIFY_ONLY=1 GROQ_KEY=x node reflect-test.mjs        # confirm prompt surgery, no calls
 ```
 
 - **This machine's TLS quirk:** node `fetch` fails with `unable to get local issuer

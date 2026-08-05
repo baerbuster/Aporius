@@ -1,5 +1,5 @@
 // Bigger reflection test — Claude Haiku (production model), candidate prompt.
-// Run:  ANTHROPIC_API_KEY=sk-ant-... node reflection_bias_test/reflect_haiku.mjs
+// Run:  ANTHROPIC_API_KEY=sk-ant-... node reflection-bias-test/reflect-haiku.mjs
 // Optional: MODEL=claude-haiku-4-5 (default)  CONC=4 (concurrency)
 //
 // Three categories, auto-judged:

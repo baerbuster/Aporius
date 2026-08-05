@@ -1,5 +1,5 @@
 // Reflection-stream you->they bias: empirical test harness.
-// See TESTING_STRATEGY.md in this folder for the full method, results, and how to
+// See testing-strategy.md in this folder for the full method, results, and how to
 // add the next variant.
 //
 // Run one or more variants and get a bug count per variant. A "bug" = the model's
@@ -7,15 +7,15 @@
 // (no speaker "I/me"), where the ONLY correct output is I-family. So they-family
 // present == the you->they inversion.
 //
-//   GROQ_KEY=gsk_... node reflect_test.mjs                 # runs VARIANTS below
-//   GROQ_KEY=gsk_... VARIANT=V0 node reflect_test.mjs      # just one
-//   GROQ_KEY=gsk_... VARIANT=V0,V4 node reflect_test.mjs   # a subset
-//   VERIFY_ONLY=1 GROQ_KEY=x node reflect_test.mjs         # check prompt surgery, no calls
+//   GROQ_KEY=gsk_... node reflect-test.mjs                 # runs VARIANTS below
+//   GROQ_KEY=gsk_... VARIANT=V0 node reflect-test.mjs      # just one
+//   GROQ_KEY=gsk_... VARIANT=V0,V4 node reflect-test.mjs   # a subset
+//   VERIFY_ONLY=1 GROQ_KEY=x node reflect-test.mjs         # check prompt surgery, no calls
 //
 // NOTE (this machine): node's fetch fails TLS against the local proxy CA
 // ("unable to get local issuer certificate"). Prefix NODE_TLS_REJECT_UNAUTHORIZED=0.
 // curl works without it. For a SINGLE sentence, the fastest/cleanest path is a curl
-// against a body file (see TESTING_STRATEGY.md) — it sidesteps the rate limit below.
+// against a body file (see testing-strategy.md) — it sidesteps the rate limit below.
 
 const API_KEY = process.env.GROQ_KEY
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
