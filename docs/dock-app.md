@@ -68,8 +68,8 @@ localhost, so caching buys nothing and costs stale screens.
 
 ## The launcher
 
-[`dock-app/Aporius.app/Contents/MacOS/Aporius`](../dock-app/Aporius.app/Contents/MacOS/Aporius)
-is a bash script. In order it:
+[`Aporius.app/Contents/MacOS/Aporius`](../Aporius.app/Contents/MacOS/Aporius) is a
+bash script. In order it:
 
 1. Appends to `/tmp/aporius_launch.log`, recording the `BUILD_STAMP` it is about
    to serve — so "am I looking at an old build?" is one `cat` away.
@@ -90,21 +90,18 @@ present, otherwise whatever `python3` is on `PATH`.
 
 ## Installing it
 
-The bundle is committed here as the source of record, but it does not run from
-inside the repo:
+`Aporius.app/` sits at the repo root and is the live bundle — the one that is
+tracked is the one that runs, so there is no copy to keep in sync.
 
 ```
-cp -R "dock-app/Aporius.app" ~/Desktop/My_Creations/Aporius/
-cp    "dock-app/Update Aporius.command" ~/Desktop/My_Creations/Aporius/
+npm install
+npm run build      # populates ~/Library/Application Support/Aporius
 ```
 
-`Update Aporius.command` resolves the project with
-`cd "$(dirname "$0")/Aporius Actual Code Files"`, so it must sit in the folder
-*containing* the repo, not inside it. It is kept only for muscle memory — it runs
-`npm run build`, which already syncs.
+Then drag `Aporius.app` to the Dock.
 
-Then run `npm run build` once to populate `APP_HOME`, and drag `Aporius.app` to
-the Dock.
+`Update Aporius.command`, also at the root, is kept only for muscle memory — it
+`cd`s to its own directory and runs `npm run build`, which already syncs.
 
 ## Debugging
 

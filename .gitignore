@@ -4,3 +4,6 @@ dist/
 
 # Machine-local Claude Code permissions, not shared config
 .claude/settings.local.json
+
+# Working notes, not for the public repo
+AporiusRepoPolish.md
