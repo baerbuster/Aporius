@@ -1,0 +1,45 @@
+# Normalise line endings on the way in; check out LF everywhere.
+* text=auto eol=lf
+
+# ── Source ────────────────────────────────────────────────────
+*.js    text
+*.mjs   text
+*.jsx   text
+*.css   text
+*.html  text
+*.json  text
+*.md    text
+
+# Executable shell — must stay LF or macOS will not run them.
+*.command                   text eol=lf
+Aporius.app/Contents/MacOS/Aporius text eol=lf
+
+# ── Binary ────────────────────────────────────────────────────
+# Marked explicitly so git never tries to diff, merge or line-ending-convert
+# them. Without this a stray CRLF conversion silently corrupts an image.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.icns  binary
+*.mp3   binary
+*.wav   binary
+*.xlsx  binary
+*.pages binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+
+# Apple property lists are usually XML but can be binary — treat as binary so a
+# binary plist is never mangled.
+*.plist binary
+Aporius.app/Contents/PkgInfo binary
+
+# ── GitHub presentation ───────────────────────────────────────
+# Collapse the lockfile in diffs and keep it out of the language stats.
+package-lock.json  linguist-generated=true -diff
+
+# Keep prose and screenshots out of the language bar. The reflection-bias-test
+# harnesses are deliberately NOT excluded — they are real work and should count.
+docs/** linguist-documentation
