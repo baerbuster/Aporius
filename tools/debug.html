@@ -143,10 +143,21 @@
   </div>
 
 <script>
+// ── Reflection prompt bench ──────────────────────────────────
+// Run it:  npm run dev   →   http://localhost:5173/tools/debug.html
+//
+// Lives in tools/ rather than public/ so it is NOT copied into dist/ and never
+// ships with the app. It is still served from the Vite root in dev, so it shares
+// an origin with the app running on the same port.
+//
+// The key field prefills from the app's own localStorage when there is something
+// saved for this origin; otherwise just paste a key into the box.
+//
 // ── Defaults ─────────────────────────────────────────────────
-// SYSTEM_PROMPT is a scratch copy — edit freely here, then paste a winner back
-// into src/services/reflectionStream.js. It now DIVERGES from that file: the
-// examples here address the speaker as "you" rather than "they".
+// SYSTEM_PROMPT below is a scratch copy — edit freely, then paste a winner back
+// into src/services/reflectionStream.js. As of 2026-08-05 it is byte-identical to
+// the one there; an older comment here claimed a you/they divergence, which was
+// true before production switched to you-form and is not true now.
 const SYSTEM_PROMPT = `Return a single JSON object.
 
 Examples:
