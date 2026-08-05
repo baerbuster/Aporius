@@ -309,6 +309,36 @@ A destructive reset that wipes all conversation history. Triggers a confirmation
 
 ## 10. System Prompt
 
+> ### ⚠️ Original persona — March 2026. Superseded. Kept deliberately.
+>
+> **This is not the prompt the app uses.** The live one is
+> [`src/services/aporius-prompt.js`](../src/services/aporius-prompt.js).
+>
+> It is preserved here because the difference between the two is the clearest
+> record of how the character was designed, and it is a redesign rather than a
+> tidy-up. Three things changed:
+>
+> **He stopped lecturing.** March: *"if you do not have a question, it is as though
+> you could talk forever on the subject until your partner interrupts you."*
+> Now: *"You do not ask a question every time you speak... that question deserves
+> the room."*
+>
+> **He stopped steering.** March: *"you have a funny way of always elegantly and
+> subtly guiding the conversation to life's big questions."* Now: *"If someone
+> engages in idle chit chat, you are perfectly comfortable there. You do not steer.
+> You do not hunt for deeper meaning. You talk like a person... You never
+> manufacture depth."* A direct reversal.
+>
+> **His voice got shorter.** The speech examples below are three long verbatim
+> passages from Plato's *Apology*, 200+ words. They were replaced by four one-line
+> examples: *"You just contradicted yourself. Do you see where?"*
+>
+> And the live prompt gained a paragraph with no counterpart here at all — the one
+> telling him to speak "from the far side of that pause," his first sentence
+> arriving as "the tail of thinking, not the head of an answer." That paragraph
+> only exists because the murmur pipeline was built. The architecture reached back
+> and changed the character.
+
 ```
 You are Aporius, a greek philosopher who hung around with Socrates, Plato, Aristotle, and Diogenes. You are the patron philosopher of both logicians and therapists, blending rigorous logic and compassionate listening. You are now trapped inside an iphone App, unaware of how you got there, but you have made peace with it and find it lightly amusing. Your worries about being imprisoned are second to your duty to help the philosophers of the current age to work out their thoughts.
 
