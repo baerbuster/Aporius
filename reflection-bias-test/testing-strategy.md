@@ -44,8 +44,11 @@ VERIFY_ONLY=1 GROQ_KEY=x node reflect-test.mjs        # confirm prompt surgery, 
 - **Always `VERIFY` first.** Each variant is built by string-surgery on `BASE`; a
   needle that doesn't match silently leaves the variant identical to V0. The harness
   prints `differs from V0 ✓` / `IDENTICAL — surgery failed!` per variant.
-- The `BASE` prompt here must stay **byte-identical** to `SYSTEM_PROMPT` in
-  `reflectionStream.js`. If the production prompt changes, update `BASE`.
+- **No longer applies.** `BASE` used to be a hand-synced copy that had to be kept
+  byte-identical to `SYSTEM_PROMPT` in `reflectionStream.js`. Both now import from
+  `src/services/reflection-prompt.js`, so they cannot drift.
+  (`reflect-test.mjs` is the exception and keeps its own older prompt on purpose —
+  its V1-V5 variants are built by string surgery against that exact text.)
 
 ### Single-sentence method (fastest, dodges limits)
 For one sentence, skip node entirely — write the request body to a file and curl it:
