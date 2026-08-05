@@ -4,16 +4,7 @@ import KnowThyself from './components/screens/KnowThyself'
 import MainScreen from './components/screens/MainScreen'
 import ConversationHistory from './components/screens/ConversationHistory'
 import PonderThis from './components/screens/PonderThis'
-
-const SETTINGS_KEY = 'aporius_settings'
-
-function loadSettings() {
-  try {
-    return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}
-  } catch {
-    return {}
-  }
-}
+import { loadSettings, saveSettings } from './settings'
 
 // Deepgram is in here because the murmur side runs on it: MainScreen feeds this
 // key straight to createLiveSentenceStream, which is what the reflection stream
@@ -50,7 +41,7 @@ export default function App() {
   }
 
   const handleSettingsSave = (newSettings) => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings))
+    saveSettings(newSettings)
     setSettings(newSettings)
     navigate('main')
   }

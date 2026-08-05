@@ -1,21 +1,13 @@
 import { useEffect, useRef } from 'react'
+import { loadName } from '../../settings'
 
 const MESSAGES_KEY = 'aporius_messages'
-const SETTINGS_KEY = 'aporius_settings'
 
 function loadMessages() {
   try {
     return JSON.parse(localStorage.getItem(MESSAGES_KEY)) || []
   } catch {
     return []
-  }
-}
-
-function loadName() {
-  try {
-    return JSON.parse(localStorage.getItem(SETTINGS_KEY))?.name || 'Seeker'
-  } catch {
-    return 'Seeker'
   }
 }
 
