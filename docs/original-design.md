@@ -32,6 +32,22 @@
 >
 > **Still accurate, and still the reference:** §2 Typography, §3 Color Map, and
 > the palette tables. Those were design decisions, and design decisions held.
+>
+> ### Earlier still — LETME
+>
+> This project started as **LETME**, a voice chat app. Three artifacts survive
+> from that stage, in [`diagrams/`](diagrams/):
+>
+> | File | What it shows |
+> |---|---|
+> | `letme-system-flow-diagram.png` | ear → mic → send button → STT → chatbot → TTS → ear. One STT, one loop, no reflection stage |
+> | `letme-state-diagram.png` | five states, driven by a "SEND" button and a "LETME" button |
+> | `letme-state-transition-table.xlsx` | the same transitions, tabulated |
+>
+> They are kept as origin, not as reference — nothing in them describes the
+> current app. But the shape of the idea is already there: the interrupt button
+> that puts you straight back to listening is the "LETME" button, and it survives
+> today as **LISTEN, APORIUS!**
 
 ## Table of Contents
 
