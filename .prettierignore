@@ -1,0 +1,16 @@
+dist/
+node_modules/
+Aporius.app/
+package-lock.json
+docs/
+*.md
+
+# FROZEN — do not let a formatter touch this file.
+#
+# reflect-test.mjs is an ablation study whose V1-V5 variants are built by
+# .replace() string surgery against an exact copy of the old they-form prompt.
+# Any reformatting that shifts that text — even whitespace Prettier considers
+# cosmetic — makes every needle stop matching, the variants silently collapse
+# into V0, and the file stops meaning anything. It fails silently, which is
+# the worst way for it to fail.
+reflection-bias-test/reflect-test.mjs

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import LaurelWreath from '../icons/LaurelWreath'
 import HistoryScroll from '../icons/HistoryScroll'
 import { useAudioCapture } from '../../hooks/useAudioCapture'
