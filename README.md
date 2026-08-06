@@ -51,6 +51,8 @@ The left pipeline is the conversation. The right pipeline is the murmurs. They s
 
 Full mechanism — the validation guard, the two serial queues, the profundity-gap rule, Deepgram's flush-on-close — is in **[docs/tech-spec.md](docs/tech-spec.md)**.
 
+How it got this way — including the three separate attempts at the perspective transform, and the bug that was fixed by *deleting* rules rather than adding them — is in **[CHANGELOG.md](CHANGELOG.md)**.
+
 ## Running it
 
 Node 18+ (the `.mjs` harnesses need global `fetch`).
