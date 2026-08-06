@@ -54,30 +54,52 @@ export default function KnowThyself({ settings, onSave, onBack }) {
           />
         </div>
 
-        <div className="settings__field">
-          <label className="settings__label">
-            By what right can you hear? [Groq API Key]
-          </label>
-          <input
-            className="settings__input"
-            type="password"
-            placeholder="gsk_..."
-            value={form.groqKey}
-            onChange={set('groqKey')}
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-          />
+        {/* Hearing takes two keys: Groq transcribes the finished thought,
+            Deepgram streams sentences as they are spoken. */}
+        <div className="settings__group">
+          <label className="settings__label">By what right can you hear?</label>
+
+          <div className="settings__field">
+            <span className="settings__label settings__label--sub">
+              [Groq Whisper API Key]
+            </span>
+            <input
+              className="settings__input"
+              type="password"
+              placeholder="gsk_..."
+              value={form.groqKey}
+              onChange={set('groqKey')}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </div>
+
+          <div className="settings__field">
+            <span className="settings__label settings__label--sub">
+              [Deepgram API Key]
+            </span>
+            <input
+              className="settings__input"
+              type="password"
+              placeholder="40-character hex key"
+              value={form.deepgramKey}
+              onChange={set('deepgramKey')}
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+          </div>
         </div>
 
         <div className="settings__field">
           <label className="settings__label">
-            By what right can you think? [Claude Sonnet API Key]
+            By what right can you think? [Anthropic API Key]
           </label>
           <input
             className="settings__input"
             type="password"
-            placeholder="abcd..."
+            placeholder="sk-ant-..."
             value={form.claudeKey}
             onChange={set('claudeKey')}
             autoComplete="off"
@@ -104,30 +126,14 @@ export default function KnowThyself({ settings, onSave, onBack }) {
 
         <div className="settings__field">
           <label className="settings__label">
-            Fallback voice [Google Cloud TTS API Key]
+            And if a cat got your tongue? [Google Cloud TTS API Key]
           </label>
           <input
             className="settings__input"
             type="password"
-            placeholder="abcd..."
+            placeholder="AIza..."
             value={form.googleTTSKey}
             onChange={set('googleTTSKey')}
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-        </div>
-
-        <div className="settings__field">
-          <label className="settings__label">
-            By what right can you murmur? [Deepgram API Key]
-          </label>
-          <input
-            className="settings__input"
-            type="password"
-            placeholder="abcd..."
-            value={form.deepgramKey}
-            onChange={set('deepgramKey')}
             autoComplete="off"
             autoCorrect="off"
             spellCheck={false}

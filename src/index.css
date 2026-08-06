@@ -141,10 +141,23 @@ body {
   gap: 6px;
 }
 
+/* One question, several keys — spaced wider than a label sits from its input,
+   so the question reads as the header and the brackets read as its parts. */
+.settings__group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .settings__label {
   font-size: 13px;
   color: var(--black);
   line-height: 1.4;
+}
+
+.settings__label--sub {
+  font-size: 12px;
+  opacity: 0.6;
 }
 
 .settings__input {
