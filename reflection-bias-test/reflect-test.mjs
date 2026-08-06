@@ -1,6 +1,4 @@
 // Reflection-stream you->they bias: empirical test harness.
-// See testing-strategy.md in this folder for the full method, results, and how to
-// add the next variant.
 //
 // Run one or more variants and get a bug count per variant. A "bug" = the model's
 // reflected sentence contains any they-family token, on a PURE second-person input
@@ -15,7 +13,7 @@
 // NOTE (this machine): node's fetch fails TLS against the local proxy CA
 // ("unable to get local issuer certificate"). Prefix NODE_TLS_REJECT_UNAUTHORIZED=0.
 // curl works without it. For a SINGLE sentence, the fastest/cleanest path is a curl
-// against a body file (see testing-strategy.md) — it sidesteps the rate limit below.
+// against a body file — it sidesteps the rate limit below.
 
 const API_KEY = process.env.GROQ_KEY
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
