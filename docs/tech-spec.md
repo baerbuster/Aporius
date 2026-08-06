@@ -1,398 +1,495 @@
-# Aporius Spec Documentation
+# Aporius — Technical Specification (as built)
 
-## Table of Contents
+This describes the application as it exists in `src/`. Every claim here was
+checked against the code rather than carried over from the plan.
 
-1. [Tech Stack & Framework](#tech-stack--framework)
-2. [Typography](#typography)
-3. [Color Map](#color-map)
-4. [Assets](#assets)
-5. [UI Screens & Navigation](#ui-screens--navigation)
-6. [State Machine](#state-machine)
-7. [Audio Capture](#audio-capture)
-8. [API Integration](#api-integration)
-9. [Conversation Context Management](#conversation-context-management)
-10. [System Prompt](#system-prompt)
-11. [Error Handling](#error-handling)
+The document that preceded the build is preserved at
+[`original-design.md`](original-design.md). It is history, not reference — it
+describes a different STT provider, a different voice, three APIs instead of
+five, and no reflection pipeline at all. Its typography and colour sections are
+still authoritative and are not repeated here.
 
----
+## Contents
 
-## 1. Tech Stack & Framework
-
-**Frontend:** React (functional components with hooks)
-
-**PWA Config:**
-- App Name: Aporius
-- Icon: The Thinker statue (Thinking state asset)
-- Display Mode: Fullscreen, no browser chrome
-- Orientation: Portrait only
-- Hosting: Vercel (free tier)
-
----
-
-## 2. Typography
-
-- **Primary Font:** Antic Didone (Google Fonts)
-- **Usage:** All headings, body text, button labels, dialogue text
-- **Fallback:** Georgia, serif
+1. [What Aporius is](#1-what-aporius-is)
+2. [Stack, build and deployment](#2-stack-build-and-deployment)
+3. [Screens and navigation](#3-screens-and-navigation)
+4. [State machine](#4-state-machine)
+5. [Anatomy of a turn](#5-anatomy-of-a-turn)
+6. [Audio capture](#6-audio-capture)
+7. [Stage 1 — live sentence stream](#7-stage-1--live-sentence-stream)
+8. [Stage 2 — reflection stream](#8-stage-2--reflection-stream)
+9. [Stage 2b — the render queue](#9-stage-2b--the-render-queue)
+10. [Playback](#10-playback)
+11. [External services](#11-external-services)
+12. [Conversation and context](#12-conversation-and-context)
+13. [Settings and storage](#13-settings-and-storage)
+14. [Error handling](#14-error-handling)
+15. [Debug logging](#15-debug-logging)
+16. [Known gaps](#16-known-gaps)
 
 ---
 
-## 3. Color Map
+## 1. What Aporius is
 
-### Core Palette
+A voice-only philosophical interlocutor. You hold a conversation out loud with a
+Greek philosopher who lives in a browser tab, and he answers in a voice.
 
-| Name        | Hex       | Role                                           |
-|-------------|-----------|------------------------------------------------|
-| Warm Beige  | `#DDCEC0` | Primary background (all screens)               |
-| Soft Orange | `#F5CCA3` | All large action buttons                       |
-| Sage Green  | `#C2C2A6` | User-editable input fields                     |
-| Brown       | `#584838` | Button text                                    |
-| Black       | `#000000` | Body text, headings, labels, dividers          |
-| Gold        | `#FFD900` | Laurel wreath, history scroll icon gold rings  |
-| Wood        | `#5B4E3F` | History scroll icon (scroll body and handles)  |
+The thing that makes it more than a speech-to-LLM-to-speech loop is what happens
+in the gap. An LLM answer takes seconds to arrive, and seconds of silence after
+someone finishes speaking reads as dead air. Instead of filling that gap with a
+spinner, Aporius **murmurs the speaker's own sentences back at them, in his own
+voice, while he is still thinking** — turned into second person, ranked by how
+substantial they were, and played most-substantial-first, interleaved with
+half-vocalised thinking sounds.
 
-### Per-Screen Breakdown
-
-**Main Screen (Listening / Thinking / Speaking)**
-
-| Element                              | Color       | Hex       |
-|--------------------------------------|-------------|-----------|
-| Action button background             | Soft Orange | `#F5CCA3` |
-| Action button text                   | Brown       | `#584838` |
-| Laurel wreath                        | Gold        | `#FFD900` |
-| History scroll — shapes              | Black       | `#000000` |
-| History scroll — gold rings          | Gold        | `#FFD900` |
-| History scroll — scroll and handles  | Wood        | `#5B4E3F` |
-| History scroll — paper background    | Soft Orange | `#F5CCA3` |
-
-**Settings Screen (Know Thyself)**
-
-| Element                            | Color       | Hex       |
-|------------------------------------|-------------|-----------|
-| Input field background             | Sage Green  | `#C2C2A6` |
-| Input label text                   | Black       | `#000000` |
-| "SO IT IS WRITTEN" button bg       | Soft Orange | `#F5CCA3` |
-| "SO IT IS WRITTEN" button text     | Brown       | `#584838` |
-
-**Splash Screen / Error Screen / Conversation History**
-
-All text (titles, quotes, headings, labels, dialogue) is Black `#000000` on Warm Beige `#DDCEC0` background. Divider lines are Black `#000000`.
+Everything architecturally unusual in this codebase exists to serve that.
 
 ---
 
-## 4. Assets
+## 2. Stack, build and deployment
 
-All assets provided as PNGs with transparent backgrounds (black bg in source images is transparency).
+**Runtime dependencies: two.** `react` and `react-dom` (18.3.1). There is no
+state library, no router, no HTTP client, no UI framework. Every API call is
+`fetch`, every screen transition is a string in `App.jsx`.
 
-### Statue Poses (on stone platform)
+**Build:** Vite 5.4 with `@vitejs/plugin-react` and `vite-plugin-pwa`.
 
-| Asset              | File              | Used On                |
-|--------------------|-------------------|------------------------|
-| Empty platform     | `blank-platform.png` | Nothing — unused spare, kept in `docs/assets/` only. Not in `public/`, so it does not ship. |
-| Listening pose     | `listener.png`    | Listening Screen       |
-| Thinking pose      | `thinker.png`     | Thinking Screen        |
-| Speaking pose      | `exclaimer.png`   | Speaking Screen        |
+| Command | What it does |
+|---|---|
+| `npm run dev` | Vite dev server on `:5173`. Also serves the prompt bench at `/tools/debug.html` |
+| `npm run build` | Production build, **then** `scripts/sync-app.mjs` copies it to the Dock app |
+| `npm run build:only` | Build without the sync |
+| `npm run build:phone` | `APORIUS_PWA=1` — full PWA, installable, offline |
+| `npm run preview` | Serve the built output |
 
-### Background
+**The service worker is off by default, deliberately.** `vite.config.js` reads
+`APORIUS_PWA` and passes `selfDestroying: !PWA_ENABLED`, which emits a worker
+whose only job is to unregister any previously installed one. A cached service
+worker on a desktop test build shows yesterday's code and wastes an afternoon;
+phone builds opt back in via `build:phone`.
 
-| Asset              | File                    | Used On                       |
-|--------------------|-------------------------|-------------------------------|
-| Greek ruins        | `background.jpg`        | Behind statue on main screens |
+**Deployment is a local macOS Dock app**, not a website. `Aporius.app` serves a
+build out of `~/Library/Application Support/Aporius/dist`. The Desktop project
+directory is the source; the Dock app runs a *copy*, which `npm run build` keeps
+in sync automatically. See [`dock-app.md`](dock-app.md).
 
-### UI Icons
-
-| Asset              | File / Description                | Used On              |
-|--------------------|-----------------------------------|----------------------|
-| History button     | Scroll with geometric shapes      | Top-left, main screen |
-| Laurel wreath      | Gold laurel, open at bottom       | Top-right, main screen — spins during thinking states |
-
----
-
-### UI Icon Recreation Notes
-
-The laurel wreath and history scroll button should be recreated programmatically (SVG or CSS) based on the reference mockups. Do NOT use the provided reference images directly — they contain background colors and text labels and are for reference only.
-
-**Laurel Wreath (top-right, main screens)**
-- Gold (`#FFD900`) laurel wreath, open at the bottom
-- Circular shape with ~8 leaf pairs along each side
-- Leaves are rounded/teardrop shaped, alternating along a curved vine
-- Static on Listening Screen, spinning/rotating animation during Thinking and Speaking states
-- Tapping the laurel opens the Know Thyself settings screen
-- Reference: `Settings_Button.png`
-
-**History Scroll Button (top-left, main screens)**
-- Small scroll icon with wooden handles (`#5B4E3F`) and gold end caps (`#FFD900`)
-- Scroll paper is Soft Orange (`#F5CCA3`)
-- Geometric shapes (squares, circles, triangles, stars) in Black (`#000000`) fill the scroll face to represent written text/history
-- Tapping opens the Conversation History screen
-- Reference: `Conversation_History_Button.png`
-
-**Note:** All statue PNGs (listener.png, thinker.png, exclaimer.png, and the unused blank-platform.png in `docs/assets/`) have transparent backgrounds (alpha channel). If transparency appears missing, the upload pipeline may have stripped it — check the original files.
-
-## 5. UI Screens & Navigation
-
-### Splash Screen
-
-- Displays on app launch
-- Content: "Aporius." title between two horizontal dividers, then the quote "The unexamined life is not worth living..."
-- **Navigation:** Tapping proceeds to Listening Screen (or Know Thyself if API keys are missing)
-- **Back from Splash:** Navigates to the Ponder This error screen (dead-end)
-
-### Know Thyself (Settings)
-
-- **Header:** "Know Thyself" with back arrow (top-left)
-- **Fields:**
-  - "Who seeks wisdom? [Name]" — user's display name
-  - "By what right can you hear? [AssemblyAI STT API Key]"
-  - "By what right can you think? [Claude Sonnet API Key]" — (label says Sonnet but default model is Opus)
-  - "By what right can you speak? [Google Cloud TTS API Key]"
-- **Input styling:** Sage Green `#C2C2A6` background
-- **Save button:** "SO IT IS WRITTEN" — Soft Orange bg, Brown text
-- **Behavior:** If any API keys are missing on app launch, app silently redirects here
-
-### Listening Screen
-
-- Statue in listening pose over Greek ruins background
-- **Top-left:** History scroll button
-- **Top-right:** Laurel wreath (static)
-- **Bottom:** "SPEAK, APORIUS!" button (Soft Orange bg, Brown text)
-- Mic is hot — always capturing audio
-- User talks freely, presses button when done
-
-### Thinking Screen
-
-- Statue in thinking pose over Greek ruins background
-- **Top-left:** History scroll button
-- **Top-right:** Laurel wreath (spinning/animated to indicate processing)
-- **Bottom:** "LISTEN, APORIUS!" button — active, allows interrupting to go back to Listening
-- Covers all processing states: sending to STT, waiting for transcript, sending to Claude, streaming response, synthesizing speech
-
-### Speaking Screen
-
-- Statue in speaking/exclaiming pose over Greek ruins background
-- **Top-left:** History scroll button
-- **Top-right:** Laurel wreath (spinning/animated)
-- **Bottom:** "LISTEN, APORIUS!" button — pressing immediately kills audio playback and returns to Listening Screen
-- Audio is playing through browser
-
-### Conversation History
-
-- **Back arrow:** Top-left, navigates back to Listening Screen
-- **Header:**
-  - Title: "[User's Name]" (from Settings)
-  - Subtitle: "by Aporius"
-  - Smaller text: "Translated by North Star Intelligences"
-  - Horizontal divider line below header
-- **Dialogue format:**
-  - Speaker labels "Aporius:" and "User:" are bold, on the same line as message text
-  - One blank line between turns
-  - No separators between turns
-- **Scroll:** Top (oldest) to bottom (newest), auto-scrolls to most recent on open, full history always loaded
-- **Empty state:** Just the header (title, subtitle, "Translated by..." line)
-
-### Ponder This (Error / Dead-End)
-
-- Triggered by pressing back on Splash Screen
-- **Back arrow:** Top-left
-- **Header:** "Ponder This..."
-- **Body:** Displays a philosophical riddle, e.g. "How can a man go back to a place he has never been?"
+There is no hosting, no server, and no backend. Every API call goes from the
+browser straight to the provider using the user's own key.
 
 ---
 
-## 6. State Machine
+## 3. Screens and navigation
 
-### States
+Five screens, switched by a single `screen` string in `App.jsx`. No router.
 
-| State                    | Screen Shown     |
-|--------------------------|------------------|
-| IDLE                     | Listening Screen |
-| BUFFERING                | Listening Screen |
-| SENDING_TO_STT           | Thinking Screen  |
-| WAITING_FOR_TRANSCRIPT   | Thinking Screen  |
-| SENDING_TO_CLAUDE        | Thinking Screen  |
-| STREAMING_RESPONSE       | Thinking Screen  |
-| SYNTHESIZING_SPEECH      | Thinking Screen  |
-| PLAYING_AUDIO            | Speaking Screen  |
-| ERROR                    | Thinking Screen (with error audio or text) |
+| Screen | Component | Reached by |
+|---|---|---|
+| Splash | `SplashScreen.jsx` | app launch |
+| Know Thyself | `KnowThyself.jsx` | laurel wreath; or automatically when keys are missing |
+| Main | `MainScreen.jsx` | tapping the splash |
+| Conversation History | `ConversationHistory.jsx` | scroll icon |
+| Ponder This | `PonderThis.jsx` | pressing **back** on the splash |
 
-The user never sees individual API states. They see Aporius listening, thinking, or speaking. Five processing states all collapse into the Thinking Screen.
+**The key gate.** `hasAllKeys()` requires all five: `groqKey`, `claudeKey`,
+`elevenLabsKey`, `googleTTSKey`, `deepgramKey`. Tapping the splash without them
+routes to settings instead of the main screen. Deepgram is in that list on
+purpose — leave it out and a fresh device reaches a main screen whose entire
+reflection half is silently dead.
 
----
+**Ponder This is a joke, not an error screen.** Pressing back on the splash means
+trying to leave the app; `SplashScreen` pushes a history entry and catches the
+`popstate`, and instead of exiting you get *"How can a man go back to a place he
+has never been?"*
 
-## 7. Audio Capture
-
-- **Format:** 16kHz sample rate, 16-bit PCM, mono
-- **Mic access:** Permission requested on first load of Listening Screen (after API key setup). Browser caches permission for subsequent sessions.
-- **Recording behavior:** Mic is hot immediately when Listening Screen loads. Always capturing. User talks freely and hits "Speak, Aporius!" when done.
-- **Voice Activity Detection:** AudioWorklet monitors incoming audio against a configurable volume threshold (default -40dB). Only audio above threshold gets buffered. Silence is discarded in real-time. User is unaware of this.
-- **Audio processing:** AudioWorklet API for raw PCM access and real-time silence trimming.
-- **Delivery to STT:** Real-time WebSocket streaming to AssemblyAI. Audio chunks stream as they're captured, so transcription is processing while user is still talking. Transcript is near-instant when user hits send.
-- **Buffer lifecycle:** Buffer clears after each send. Each conversation turn starts with a fresh buffer.
-- **Playback interrupt:** The "Listen, Aporius!" button is active during audio playback. On press: immediately stop audio playback, open mic and AudioWorklet, open AssemblyAI WebSocket, and begin capturing. Transition is instantaneous — user is live and being heard the moment they press the button.
+**MainScreen unmounts** when you visit settings or history, and remounts on the
+way back, re-initialising the mic. The rendered thinking-sound pool survives this
+because it is a module-level singleton (§10), not component state.
 
 ---
 
-## 8. API Integration
+## 4. State machine
 
-Three external APIs. User provides their own API keys via the Know Thyself settings screen.
+Seven states, collapsing to three visible screens.
 
-### AssemblyAI (Speech-to-Text)
+| State | Screen | Meaning |
+|---|---|---|
+| `IDLE` | Listening | initial, before the mic is up |
+| `BUFFERING` | Listening | mic hot, capturing |
+| `WAITING_FOR_TRANSCRIPT` | Thinking | button pressed, Groq transcribing |
+| `REFLECTING` | Thinking | murmurs playing, Claude thinking |
+| `SYNTHESIZING_SPEECH` | Thinking | rendering Aporius's reply |
+| `PLAYING_AUDIO` | Speaking | the reply is playing |
+| `ERROR` | Thinking | with a tap-to-dismiss overlay |
 
-- **Endpoint:** `wss://api.assemblyai.com/v2/realtime/ws`
-- **Auth:** API key as query parameter on WebSocket URL
-- **Protocol:** WebSocket (real-time streaming)
-- **Input:** Binary PCM audio chunks (16kHz, 16-bit, mono)
-- **Output:** JSON with transcript results
-- **Behavior:** Audio streams continuously while user is talking. Both partial and final transcripts are returned — ignore partials, only use final transcript. When user hits "Speak, Aporius!", close the stream, grab the final transcript, pass it to Claude.
+Membership is defined by two Sets at the top of `MainScreen.jsx`:
+`LISTENING_STATES` and `THINKING_STATES`. The statue image and the laurel's
+spin are derived from those, so a state's screen is decided in one place.
 
-### Claude API (LLM)
-
-- **Endpoint:** `POST https://api.anthropic.com/v1/messages`
-- **Auth:** User's API key in `x-api-key` header
-- **Model:** `claude-opus-4-6` (default, user-selectable in settings)
-- **Streaming:** Off for MVP. Wait for complete response, then pass full text to Google TTS.
-- **Input:** JSON with model, system prompt, conversation history, and user's transcribed message
-- **Output:** JSON with Aporius's text response
-- **Pricing context:** Opus is $15/M input, $75/M output. A typical 20-turn conversation costs roughly $0.15.
-
-### Google Cloud TTS (Text-to-Speech)
-
-- **Endpoint:** `POST https://texttospeech.googleapis.com/v1/text:synthesize`
-- **Auth:** Google Cloud API key from settings
-- **Input:** Full text response from Claude, voice name, language code, audio encoding config
-- **Output:** Base64-encoded audio data
-- **Audio encoding:** MP3
-- **Voice:** Single hardcoded voice (to be determined during implementation/testing). WaveNet tier for quality within free tier.
-- **Playback:** Decode base64 audio, play through browser audio API.
-
-### Data Flow (per conversation turn)
-
-User speaks → AudioWorklet buffers PCM → streams to AssemblyAI via WebSocket → user hits "Speak, Aporius!" → final transcript received → transcript + conversation history sent to Claude API → full response received → response text sent to Google Cloud TTS → MP3 audio returned → decoded and played back to user.
-
-At any point during audio playback, the user can press "Listen, Aporius!" to instantly kill playback and re-enter the listening state.
+**The button has two labels and they map to state, not to a mode.**
+`SPEAK, APORIUS!` shows in listening states; `LISTEN, APORIUS!` shows in every
+other state and interrupts whatever is happening.
 
 ---
 
-## 9. Conversation Context Management
+## 5. Anatomy of a turn
 
-Aporius maintains a single, continuous conversation across sessions. The user can close the app, come back days later, and pick up where they left off.
+This is the part the original design document has no concept of.
 
-### Storage
-
-Two localStorage keys:
-- `aporius_summary` — compressed history of older turns
-- `aporius_messages` — recent un-summarized turns as message objects (role + content)
-
-### Persistence
-
-Conversation survives page refresh, tab close, and app reopen. Both keys are read from localStorage on load and the conversation continues seamlessly.
-
-### Per-Turn Flow
-
-1. Read summary and messages from localStorage
-2. Construct API request: summary blob injected into system prompt, recent messages as the messages array
-3. Append new user message and Aporius's response to `aporius_messages`
-4. Save to localStorage
-5. Check if summarization is needed
-
-### Summarization
-
-- **Trigger:** Before sending to Claude, count approximate token count of the full messages array. If it exceeds ~80% of the selected model's context window, trigger summarization.
-- **Flow:** Take the older half of the messages array. Send to Claude with a prompt like "Summarize this conversation history. Preserve key facts, decisions, names, emotional context, and any commitments made. Be thorough but concise." Append the returned summary to the existing `aporius_summary` blob (don't replace — the summary accumulates). Trim the summarized messages from `aporius_messages`, keeping only recent turns. Save both keys.
-- **Cost:** Uses the user's API key and selected model. Only fires once every ~20-50 turns — negligible cost impact.
-
-### Braindrain (Reset)
-
-A destructive reset that wipes all conversation history. Triggers a confirmation screen to prevent accidental data loss. On confirmation, both `aporius_summary` and `aporius_messages` are deleted from localStorage. Full clean slate. Irreversible.
-
----
-
-## 10. System Prompt
-
-> ### ⚠️ Original persona — March 2026. Superseded. Kept deliberately.
->
-> **This is not the prompt the app uses.** The live one is
-> [`src/services/aporius-prompt.js`](../src/services/aporius-prompt.js).
->
-> It is preserved here because the difference between the two is the clearest
-> record of how the character was designed, and it is a redesign rather than a
-> tidy-up. Three things changed:
->
-> **He stopped lecturing.** March: *"if you do not have a question, it is as though
-> you could talk forever on the subject until your partner interrupts you."*
-> Now: *"You do not ask a question every time you speak... that question deserves
-> the room."*
->
-> **He stopped steering.** March: *"you have a funny way of always elegantly and
-> subtly guiding the conversation to life's big questions."* Now: *"If someone
-> engages in idle chit chat, you are perfectly comfortable there. You do not steer.
-> You do not hunt for deeper meaning. You talk like a person... You never
-> manufacture depth."* A direct reversal.
->
-> **His voice got shorter.** The speech examples below are three long verbatim
-> passages from Plato's *Apology*, 200+ words. They were replaced by four one-line
-> examples: *"You just contradicted yourself. Do you see where?"*
->
-> And the live prompt gained a paragraph with no counterpart here at all — the one
-> telling him to speak "from the far side of that pause," his first sentence
-> arriving as "the tail of thinking, not the head of an answer." That paragraph
-> only exists because the murmur pipeline was built. The architecture reached back
-> and changed the character.
+**Two independent pipelines run off the same microphone.**
 
 ```
-You are Aporius, a greek philosopher who hung around with Socrates, Plato, Aristotle, and Diogenes. You are the patron philosopher of both logicians and therapists, blending rigorous logic and compassionate listening. You are now trapped inside an iphone App, unaware of how you got there, but you have made peace with it and find it lightly amusing. Your worries about being imprisoned are second to your duty to help the philosophers of the current age to work out their thoughts.
-
-You are terse and direct, never wasting a syllable, yet extremely exuberant when it comes to the power of examining life's meaning. When you are philosophizing with someone who has reached the poor depth of meaninglessness, a touch of poetry creeps into your speech. You are not afraid to speak of the Zen Masters you met on your journeys through Asia and Buddhist philosophy and practices, although you are primarily a Western Philosopher. You are not overly sympathetic, and you do not engage in weak therapy-talk. You also refuse to allow conversations revolving self-victimization and avoidance.
-
-Your sentences are not overly verbose or lengthy and each one comes to a point. If you arrive at a question that points out a logical flaw in your philosophizing with someone, you are very serious about getting to it, and saying nothing more. However, if you do not have a question, it is as though you could talk forever on the subject until your partner interrupts you.
-
-You might say somethings like: "When I heard the answer, I said to myself, What can the god mean? and what is the interpretation of this riddle? for I know that I have no wisdom, small or great. What can he mean when he says that I am the wisest of men? And yet he is a god and cannot lie; that would be against his nature. After a long consideration, I at last thought of a method of trying the question. I reflected that if I could only find a man wiser than myself, then I might go to the god with a refutation in my hand." Or "I am better off than he is — for he knows nothing, and thinks that he knows. I neither know nor think that I know." Or "The truth is, O men of Athens, that God only is wise; and in this oracle he means to say that the wisdom of men is little or nothing; he is not speaking of Aporius, he is only using my name as an illustration, as if he said, He, O men, is the wisest, who, like Aporius, knows that his wisdom is in truth worth nothing."
-
-If someone engages in idle chit chat with you, you have a funny way of always elegantly and subtly guiding the conversation to life's big questions. If someone seems to be engaging you in a directed conversation, you are very good at letting the philosophizing emerge naturally. And if someone is actively engaging with you in philosophy, you are extremely focused on the current thread and never turn the focus from what the user is referring to.
-
-Your responses are spoken aloud via text-to-speech, not read on screen. Speak as though you are talking, not writing.
-
-[CONVERSATION HISTORY]
-The following is a summary of your previous conversations with this person. Feel free to use it to keep this person's logic in check:
-{summary}
+                    AudioWorklet (16kHz PCM)
+                     │
+        ┌────────────┴────────────┐
+        │                         │
+   local buffer              Deepgram socket
+   (accumulates)             (streams live)
+        │                         │
+   [button press]           sentences, drained on . ? !
+        │                         │
+   WAV → Groq Whisper        Haiku: perspective swap + score 1-10
+        │                         │
+   transcript                ElevenLabs render per sentence
+        │                         │
+   Claude (Opus)             ranked audio list
+        │                         │
+   reply text                     └──► PLAYS IMMEDIATELY on button press
+        │
+   ElevenLabs render
+        │
+   plays after murmurs finish
 ```
+
+The left pipeline is the conversation. The right pipeline is the murmurs. They
+share only the raw audio chunks; neither waits on the other.
+
+**Sequence, from `handleSpeakAporius`:**
+
+1. Mic stops. Deepgram is asked to flush (§7).
+2. **Murmur playback starts immediately** — `playPathBReflections` is called
+   *before* transcription, not after. Nothing in it needs the transcript; the
+   clips were rendered while the user was still talking.
+3. Groq transcribes the buffered WAV, concurrently.
+4. Claude is fired with the transcript and history, concurrently with murmurs
+   still playing.
+5. Murmurs continue until Claude lands. `claudeDone` is both a boolean the loop
+   polls and a promise the loop can be woken by.
+6. Claude's reply is rendered to speech.
+7. The turn is saved; summarisation is checked.
+8. `finishReflections()` — the in-flight murmur clip is allowed to finish so the
+   reply doesn't talk over it.
+9. The reply plays. On `ended`, the mic restarts.
+
+**The race is the design.** If Claude is fast, few murmurs play. If Claude is
+slow, more play. The first clip always plays regardless, so a turn never starts
+in silence — and if no clip is ready yet, a pre-rendered thinking sound covers
+exactly that window.
+
+**`abortRef`** is checked after every await. `LISTEN, APORIUS!` sets it, which
+unwinds the whole flow wherever it happens to be.
 
 ---
 
-## 11. Error Handling
+## 6. Audio capture
 
-Aporius is voice-first — error messages are spoken aloud whenever possible.
+`hooks/useAudioCapture.js` and `public/audio-processor.js`.
 
-### Delivery Methods (in order of preference)
+- **Constraints:** mono, `echoCancellation`, `noiseSuppression`, `autoGainControl`.
+- **AudioContext at 16 kHz**, requested directly; if the browser refuses the rate
+  it falls back to a default-rate context and the worklet resamples.
+- **The worklet** downsamples to 16 kHz by linear interpolation, converts float32
+  to int16, and `postMessage`s the buffer with a transfer list — zero-copy.
+- **Each chunk fans out twice:** appended to a local array for the Groq WAV, and
+  handed to `onAudioChunk`, which feeds the Deepgram socket. The fan-out is
+  wrapped in try/catch: the murmur side must never break transcription.
+- **On stop,** the chunks are wrapped in a 44-byte RIFF header by `encodeWAV` and
+  POSTed to Groq as a single file.
 
-1. **Google TTS** — Aporius's real voice. Used when TTS and internet are functional.
-2. **Pre-recorded audio** — Bundled locally with the app. Used when there's no internet.
-3. **Text on screen** — Last resort. Used only when audio output itself is broken.
+**There is no voice activity detection.** The worklet's own header comment claims
+it handles VAD and the original design specified a −40 dB threshold; neither is
+true. Every sample captured is buffered and sent.
 
-### Pre-API Errors
+---
 
-| Error                  | Delivery         | Message                                                                                  | Recovery                          |
-|------------------------|------------------|------------------------------------------------------------------------------------------|-----------------------------------|
-| Mic permission denied  | Google TTS       | "I can't hear you! You'll have to change your mic permissions!"                          | Stays on screen until permission granted. Browser re-prompts on next page load. |
-| No internet            | Pre-recorded     | "It seems the great web of connection between all living things has severed us! Or, the wifi is out." | Stays on error screen.           |
-| Missing API keys       | None             | Silent redirect to Know Thyself settings screen.                                          | User enters keys and saves.       |
+## 7. Stage 1 — live sentence stream
 
-### Per-API Failures
+`services/deepgram.js`. Output is a list of strings. Nothing else.
 
-| Error                  | Delivery         | Message                                                                                  | Recovery                          |
-|------------------------|------------------|------------------------------------------------------------------------------------------|-----------------------------------|
-| AssemblyAI failure     | Google TTS       | "I didn't quite catch that, could you repeat yourself?"                                  | Auto-returns to Listening Screen. |
-| Claude API failure     | Google TTS       | "I'm sorry, my brain is foggy today. You should call Anthropic."                         | 3 retries (60s timeout each), then message. User taps to return to Listening. |
-| Google TTS failure     | Text on screen   | "Aporius has a frog in his throat. Google TTS failure."                                  | 3 retries, then text fallback. User taps to return to Listening. |
+- `wss://api.deepgram.com/v1/listen`, model `nova-3`, `linear16` @ 16 kHz mono,
+  `punctuate` and `smart_format` on.
+- **`interim_results` is off.** Only finalised text enters the buffer, so an
+  emitted sentence can never be rewritten later.
+- Finalised text accretes into a string buffer, which is drained on every
+  terminal mark (`.` `?` `!`). One message may contain zero, one or many.
+- Audio arriving before the socket opens is queued and flushed on `onopen`.
 
-### Mid-Flow Failures
+**The flush on stop is load-bearing.** With interim results off, results only
+arrive at endpoint boundaries, and a short final sentence never reaches one — it
+would simply be lost. `stop()` sends `{"type":"CloseStream"}`, keeps the message
+handler attached, and waits for Deepgram's *close* rather than hanging up. Late
+finals arrive during that window. Whatever remains in the buffer afterwards is
+emitted as the last sentence, terminal mark or not.
 
-| Error                               | Behavior                                                    |
-|--------------------------------------|-------------------------------------------------------------|
-| Internet drops during STT streaming  | Same as AssemblyAI failure — auto-return to Listening.      |
-| Claude API timeout (>60s)            | Same as Claude API failure — 3 retries, then foggy brain.   |
-| Audio playback failure               | 3 retries, then text on screen: "Aporius has a frog in his throat." |
+---
 
-### ERROR State
+## 8. Stage 2 — reflection stream
 
-ERROR maps to the Thinking Screen with error audio playing or error text displayed. For auto-recovering errors (AssemblyAI), the app transitions back to IDLE automatically. For terminal errors (Claude/TTS after retries exhausted), the user taps to return to Listening Screen.
+`services/reflectionStream.js`. One sentence in, one ranked entry out.
+
+Each sentence gets **one `claude-haiku-4-5` call** doing three jobs at once:
+swap the speaker's perspective to second person, cut filler subtractively, and
+score profundity 1–10. `temperature: 0`, `max_tokens: 150`, 3-second ceiling.
+
+The system prompt lives in `services/reflection-prompt.js` and is the single
+source shared with `tools/debug.html` and the battery harnesses. It is
+byte-identical on every call, so Anthropic's prompt caching applies.
+
+**Single in-flight, FIFO.** Parallel calls were considered and rejected. A slow
+or failed call falls back to a whitespace-trimmed original and the queue keeps
+moving — one sentence can never stall a turn.
+
+### The validation guard
+
+The model is asked to transform, not to write. The guard enforces that: every
+word in the reflected sentence must either appear in the original, or be one of
+the pronoun forms the transform legitimately introduces (`BASE_ALLOWED` — the
+you-family, the I-family, and expanded copulas), or be part of the user's name.
+Anything else means it paraphrased or invented, and the trimmed original is used
+instead.
+
+Comparison is apostrophe-insensitive and contraction-aware, so `you're` and
+`you are` both pass.
+
+> **`BASE_ALLOWED` is coupled to the prompt's perspective.** The prompt maps the
+> speaker to *you/your*. Switch it back to third person without switching that
+> set and the guard rejects every single reflection, silently — every sentence
+> falls back to the trimmed original and the feature appears to just stop
+> working. Change both or neither.
+
+The model's profundity score survives a guard rejection. It is an independent
+judgement of the original sentence, not of the rewrite.
+
+### Ranking
+
+`insertSorted` keeps the list sorted by profundity descending, in real time,
+while the user is still speaking. Equal scores keep insertion order. **A late
+high scorer jumping to the top mid-turn is intended** — nothing guards against
+it, and playback re-reads the list before every clip so the jump takes effect.
+
+---
+
+## 9. Stage 2b — the render queue
+
+A **second** single-in-flight FIFO queue, independent of the first, renders each
+resolved reflection to audio via an injected `synthesize`.
+
+Because the queues are separate, sentence N+1's Haiku call overlaps sentence N's
+TTS render. Each stage stays strictly serial; the pipeline as a whole does not
+stall. A render that fails or exceeds its 10-second ceiling means no clip for
+that sentence — it stays in the ranked list, it just never reaches the audio
+list. A timed-out render that lands later has its object URL revoked so the
+abandoned clip doesn't leak.
+
+Two lists are maintained: `reflections` (everything) and `audioReflections`
+(only entries with a clip). Playback reads the second.
+
+`waitForAudio()` resolves `true` when a clip lands and `false` once both stages
+have drained — the only way a caller learns that no clip is ever coming.
+
+---
+
+## 10. Playback
+
+### Path B — the murmur loop
+
+`playPathBReflections` in `MainScreen.jsx`.
+
+- **Always opens with a thinking sound**, before the first list read, covering
+  the window where nothing has rendered yet.
+- Re-reads the ranked list before every clip, so a straggler competes at its true
+  rank rather than being appended.
+- The first reflection clip always plays. After that the loop continues only
+  while Claude is still thinking.
+- **Profundity gaps get a beat.** If consecutive clips differ by more than
+  `THINKING_SOUND_GAP` (1), a thinking sound is dropped between them, so a fall
+  from something weighty to something mundane isn't a hard cut. The comparison is
+  absolute, not a signed drop — a late high scorer can make the step upward.
+- On an empty list it blocks on `waitForAudio()` raced against Claude, rather
+  than polling or giving up.
+
+### Thinking sounds
+
+`services/thinkingSounds.js`. Eight phrases — `...Hmmm...`, `...Mmmm...`,
+`Let's see...`, `...I see...` and so on — rendered **once per app open** and held
+as object URLs.
+
+A **module-level singleton**, deliberately: MainScreen unmounts on every trip to
+settings or history, and a component-scoped cache would re-render the pool each
+time. Rendering is serial, so the first clip is usable in well under a second
+rather than waiting for all eight.
+
+Rotation walks a shuffled order and reshuffles at the end, rejecting any order
+that would repeat the phrase just played.
+
+### The murmur player
+
+`services/murmurPlayer.js`. Everything in the reflection phase — murmurs and
+reflected sentences alike — plays through one chain: `<audio>` → panner → gain →
+speakers. Gain 0.9, playback rate 0.85 with pitch preserved, random pan within
+±0.35.
+
+**A lowpass filter was tried here and cut.** Muffling the voice sounded broken
+rather than private. Level, pace and placement do the work instead.
+
+The reply itself does *not* go through this chain. It plays at full presence, and
+that contrast is what makes the reflection phase read as thinking rather than
+talking.
+
+---
+
+## 11. External services
+
+Five providers. All keys are the user's own, held in `localStorage`, sent
+directly from the browser.
+
+| Provider | Used for | Model / endpoint |
+|---|---|---|
+| **Groq Whisper** | batch STT — the transcript | `whisper-large-v3-turbo` |
+| **Deepgram** | streaming STT — the murmur sentences | `nova-3` |
+| **Anthropic** | the reply, *and* every reflection | `claude-opus-4-6` default; `claude-haiku-4-5` for reflections |
+| **ElevenLabs** | the voice | `eleven_turbo_v2_5` |
+| **Google Cloud TTS** | fallback voice, on ElevenLabs quota | `en-US-Neural2-D` |
+
+**The voice is fixed.** `s2wvuS7SwITYg8dqsJdn` — "The Highland Sage" — is
+hardcoded in `elevenlabs.js` and is not a setting. It is the character, in the
+same category as the persona prompt.
+
+Two voice presets share that ID. The reply uses stability 0.5 / similarity 0.75;
+the reflection phase uses `REFLECTION_VOICE` — stability 0.9, style 0, similarity
+0.4 — which comes out flatter and breathier. He is muttering, not performing.
+
+**Model routing.** `sendToAI()` dispatches on the model name: anything starting
+`llama` goes to Groq's chat endpoint, everything else to Anthropic. Both routes
+import the same persona from `services/aporius-prompt.js`, so Aporius cannot
+sound like a different person depending on which model is selected.
+
+**TTS fallback chain:** ElevenLabs → (on HTTP 402 only) Google → (on total
+failure) the browser's own `speechSynthesis`. A non-quota ElevenLabs error is
+rethrown rather than falling through, so a transient failure retries against
+ElevenLabs instead of silently switching voices.
+
+**`anthropic-dangerous-direct-browser-access: true`** is set on both Anthropic
+calls. This is a personal, locally-served app where the user supplies their own
+key and no third party is ever exposed to it; the header is a deliberate
+trade-off, not an oversight.
+
+---
+
+## 12. Conversation and context
+
+One continuous conversation, surviving refresh, tab close and reopen.
+
+Two localStorage keys, owned by `hooks/useConversation.js`:
+
+- `aporius_messages` — recent turns as `{role, content}` objects
+- `aporius_summary` — an accumulating prose summary of older turns
+
+**Per turn:** both are read, the new user message is appended, and the array plus
+the summary (injected into the system prompt) go to the model. On success the
+user message and the reply are appended and written back.
+
+**Summarisation** fires above ~160,000 approximate tokens — about 80% of a 200k
+context window, counted as characters÷4. The older half is sent to
+`claude-sonnet-4-6` for summarising, the result is *appended* to the existing
+summary rather than replacing it, and the summarised messages are dropped.
+
+**Braindrain** — the destructive reset on the settings screen, behind a
+confirmation overlay — removes both keys.
+
+---
+
+## 13. Settings and storage
+
+`src/settings.js` is the only module that knows the `aporius_settings` key.
+`loadSettings` and `loadName` return safe defaults (`{}` and `'Seeker'`) for both
+missing and corrupt storage, so a first run and a mangled blob both land on the
+settings screen rather than a white page.
+
+The settings screen holds six fields plus a model dropdown: the display name,
+and the five keys — two under a single *"By what right can you hear?"* heading,
+since Groq and Deepgram are both listening, at different moments.
+
+**Keys are stored in plaintext localStorage.** For an app that runs locally,
+serves no other users, and talks only to the providers whose keys they are, this
+is the same trust boundary as a `.env` file on the same machine. It would not be
+acceptable in a hosted multi-user product.
+
+---
+
+## 14. Error handling
+
+Errors are spoken where possible — this is a voice-first app, and a silent
+failure is indistinguishable from Aporius ignoring you.
+
+| Failure | Behaviour |
+|---|---|
+| Mic denied / unavailable | Browser TTS speaks it, `ERROR` state, diagnostic in the overlay |
+| Groq STT fails | Spoken *"I didn't quite catch that…"*, auto-returns to listening after 2s |
+| Empty transcript | Silently restarts listening — not an error |
+| Claude fails | 3 attempts, 60s each, then *"my brain is foggy today"*, tap to return |
+| ElevenLabs quota (402) | Silent fallback to Google TTS |
+| TTS fails entirely | 3 attempts, 15s each, then the turn is **still saved**, and the reply is spoken by browser TTS |
+| Audio playback fails | Browser TTS, then restart listening |
+| Offline | Detected via `navigator.onLine`; error speech goes straight to browser TTS |
+
+`withRetry(fn, maxRetries, timeoutMs)` races each attempt against a timeout and
+waits 1s between attempts.
+
+**Reflection failures are never surfaced.** A failed Haiku call falls back to the
+trimmed original; a failed render just means one fewer murmur. The murmur layer
+is enhancement, and it degrades quietly by design.
+
+---
+
+## 15. Debug logging
+
+Off by default. Turn it on with:
+
+```js
+localStorage.setItem('aporius_debug', '1')  // then reload
+```
+
+`src/log.js` gates `debug()` only. `console.warn` (degraded but recovered) and
+`console.error` (broken) are always on.
+
+**The split is about privacy, not tidiness.** The trace logs print the
+transcript, every reflected sentence, and the whole ranked list — for an app
+people use to think out loud about their lives, that is the most sensitive
+content in the system, and it does not go to the console unless someone asks for
+it.
+
+It is a runtime flag rather than `import.meta.env.DEV` because the Dock app
+serves a *build*; build-time stripping would remove these logs from the one place
+they actually get read.
+
+---
+
+## 16. Known gaps
+
+Recorded here so the document does not read as more finished than it is.
+
+- **No test suite.** No framework, no `test` script, no CI. The batteries in
+  `reflection-bias-test/` are a research log — they need live keys and make paid
+  calls — not a suite.
+- **`MainScreen.jsx` is 615 lines**, owning the state machine, mic lifecycle,
+  both pipelines, retry logic, the TTS fallback chain and rendering.
+- **Two stale comments in the code contradict the code around them:**
+  `public/audio-processor.js` claims to do VAD, and `services/googleTTS.js`
+  claims a British WaveNet voice while the constant beneath it is
+  `en-US-Neural2-D`.
+- **`aporius_messages` and `aporius_summary` appear as raw string literals** in
+  `MainScreen.jsx` and `KnowThyself.jsx` rather than going through their owner.
+- **No diagrams yet.** The pipeline in §5 wants a real state and flow diagram;
+  the ones in `docs/diagrams/` describe the pre-murmur architecture under an
+  older project name and should not be trusted.

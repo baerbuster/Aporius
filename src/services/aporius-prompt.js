@@ -15,7 +15,7 @@
 // .replace on it to inject the accumulated conversation summary. Leave it exactly
 // as written or the history stops being injected.
 //
-// The original March 2026 persona is preserved in docs/tech-spec.md under
+// The original March 2026 persona is preserved in docs/original-design.md under
 // "Original persona". It is a different character — one that lectured, quoted the
 // Apology at length, and steered every conversation toward profundity. The current
 // one deliberately does not steer. Worth reading the two side by side before
