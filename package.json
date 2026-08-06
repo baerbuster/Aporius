@@ -1,7 +1,25 @@
 {
   "name": "aporius",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.0",
+  "description": "A voice-only philosophical interlocutor who murmurs your own sentences back at you while he thinks.",
+  "author": "Buster Baer",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/baerbuster/Aporius.git"
+  },
+  "keywords": [
+    "voice-assistant",
+    "speech-to-text",
+    "text-to-speech",
+    "claude",
+    "anthropic",
+    "deepgram",
+    "elevenlabs",
+    "react",
+    "philosophy"
+  ],
   "type": "module",
   "engines": {
     "node": ">=18.18.0"

@@ -119,6 +119,13 @@ Personal project, actively used. Honest gaps, also recorded in [tech-spec.md §1
 
 - **No automated tests yet.** No framework, no CI.
 - `MainScreen.jsx` is 615 lines and owns more than it should.
-- No linter configured.
 
 And one that no test suite would ever cover: whether a "hmmm" lands in a natural place, whether the pause feels like thinking, whether what he says back is any good. That stays a listening judgement.
+
+## License
+
+**None yet — all rights reserved.**
+
+That's deliberate, not an oversight. This isn't finished, and until it is I'd rather it stayed mine. Read it, take ideas from it, ask me about it. Don't ship it.
+
+A license goes on when it's actually a thing.
