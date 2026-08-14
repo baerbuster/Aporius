@@ -73,7 +73,7 @@ function normalizeApostrophes(s) {
 // Words with apostrophes collapsed (don't -> dont), everything else split on
 // non-word characters. This is how both the original and the reflected sentence
 // are compared, so contractions line up token-for-token.
-function rawTokens(s) {
+export function rawTokens(s) {
   return normalizeApostrophes(s)
     .toLowerCase()
     .replace(/'/g, '')
@@ -84,7 +84,7 @@ function rawTokens(s) {
 
 // Additionally expand contractions into their two words, so a reflected "she is"
 // (from a spoken "she's") finds "is" in the original's token set.
-function expandedTokens(s) {
+export function expandedTokens(s) {
   return normalizeApostrophes(s)
     .toLowerCase()
     .replace(/\bi'm\b/g, ' i am ')
@@ -102,7 +102,7 @@ function expandedTokens(s) {
     .filter(Boolean)
 }
 
-function passesGuard(original, reflected, userName) {
+export function passesGuard(original, reflected, userName) {
   const origSet = new Set([...rawTokens(original), ...expandedTokens(original)])
   const allowed = new Set(BASE_ALLOWED)
   if (userName) for (const w of rawTokens(userName)) allowed.add(w)
@@ -115,11 +115,11 @@ function passesGuard(original, reflected, userName) {
 
 // Lightly-trimmed original: whitespace only. A subtractive edit that touches
 // nothing else — safe by construction, and it always passes the guard.
-function trimOriginal(sentence) {
+export function trimOriginal(sentence) {
   return sentence.replace(/\s+/g, ' ').trim()
 }
 
-function normalizeScore(v) {
+export function normalizeScore(v) {
   const n = Math.round(Number(v))
   if (!Number.isFinite(n)) return FALLBACK_PROFUNDITY
   return Math.min(10, Math.max(1, n))
@@ -128,7 +128,7 @@ function normalizeScore(v) {
 // Pull the JSON object out of the model's text. Haiku returns bare JSON given
 // the "Return ONLY a JSON object" instruction, but tolerate stray prose around
 // it — a failed match throws and the caller falls back for this sentence.
-function extractJson(text) {
+export function extractJson(text) {
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
   if (start === -1 || end === -1 || end < start) throw new Error('no JSON object in reply')

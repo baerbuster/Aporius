@@ -21,7 +21,8 @@ import prettier from 'eslint-config-prettier'
 
 export default [
   {
-    ignores: ['dist/**', 'node_modules/**', 'Aporius.app/**'],
+    // `coverage/` is the v8 reporter's generated HTML report, not source.
+    ignores: ['dist/**', 'node_modules/**', 'Aporius.app/**', 'coverage/**'],
   },
 
   // ── The app ──────────────────────────────────────────────
@@ -73,6 +74,34 @@ export default [
       // Requiring a comment keeps them honest without forcing dead handlers.
       'no-empty': ['error', { allowEmptyCatch: true }],
 
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+
+  // ── The test suite ───────────────────────────────────────
+  // Same browser environment as the app (jsdom), plus Vitest's globals, which
+  // are injected by the runner rather than imported — `globals: true` in
+  // vitest.config.js. Without this block every `describe` is a no-undef error.
+  {
+    files: ['src/**/*.test.{js,jsx}', 'test/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.browser, ...globals.vitest },
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    plugins: { react },
+    settings: {
+      react: { version: 'detect' },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      'react/react-in-jsx-scope': 'off',
+      'react/jsx-uses-react': 'off',
+      'react/prop-types': 'off',
+      'no-empty': ['error', { allowEmptyCatch: true }],
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },

@@ -107,19 +107,24 @@ src/
                         reflectionStream · thinkingSounds · murmurPlayer
                         reflection-prompt · aporius-prompt   ← single sources
   hooks/                useAudioCapture · useConversation
+  **/*.test.js(x)       the suite, beside what it tests
+test/setup.js               shared browser stubs (jsdom has no audio or blob URLs)
 public/audio-processor.js   AudioWorklet — resamples to 16kHz
 tools/debug.html            prompt-tuning bench (dev server only)
 reflection-bias-test/       research log — see below
 docs/                       tech spec, original design doc, dock app
 ```
 
-**`reflection-bias-test/` is a research log, not a test suite.** Fourteen harnesses that need live keys and make real paid calls; they're the instrument the reflection prompt was converged with over ten rounds. Good work, wrong category — don't mistake them for tests.
+**The suite is `npm test`.** Vitest, 380 tests, everything mocked — no API keys, no network, no microphone, so it costs nothing to run. `npm run test:coverage` for the report.
+
+**`reflection-bias-test/` is a research log, not a test suite.** Fourteen harnesses that need live keys and make real paid calls; they're the instrument the reflection prompt was converged with over ten rounds. Good work, wrong category — don't mistake them for tests. That distinction is the whole reason the real suite lives beside the code instead of in there.
 
 ## Status
 
 Personal project, actively used. Honest gaps, also recorded in [tech-spec.md §16](docs/tech-spec.md):
 
-- **No automated tests yet.** No framework, no CI.
+- **No CI.** There is a test suite — 380 tests under Vitest, `npm test` — but nothing
+  runs it automatically on a clean clone.
 - `MainScreen.jsx` is 615 lines and owns more than it should.
 
 And one that no test suite would ever cover: whether a "hmmm" lands in a natural place, whether the pause feels like thinking, whether what he says back is any good. That stays a listening judgement.

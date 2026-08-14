@@ -1,5 +1,6 @@
 dist/
 node_modules/
+coverage/
 Aporius.app/
 package-lock.json
 docs/

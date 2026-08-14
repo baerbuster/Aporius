@@ -479,9 +479,11 @@ they actually get read.
 
 Recorded here so the document does not read as more finished than it is.
 
-- **No test suite.** No framework, no `test` script, no CI. The batteries in
-  `reflection-bias-test/` are a research log — they need live keys and make paid
-  calls — not a suite.
+- **No CI.** The suite exists (Vitest, `npm test`, 380 tests, everything mocked) but
+  nothing runs it on push, so nothing proves the project builds from a clean clone.
+- **Coverage is 96% of statements but thinner where it matters most.** `MainScreen`'s
+  retry *timeouts*, the session guard in `stopLive`, and the audio fan-out to Deepgram
+  have no test. A green run is not proof the turn flow is sound.
 - **`MainScreen.jsx` is 615 lines**, owning the state machine, mic lifecycle,
   both pipelines, retry logic, the TTS fallback chain and rendering.
 - **Two stale comments in the code contradict the code around them:**
