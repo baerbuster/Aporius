@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { synthesizeSpeech, base64ToAudioBlob, speakWithBrowserTTS } from './googleTTS'
+import { synthesizeWithGoogle, base64ToAudioBlob, speakWithBrowserTTS } from './googleTTS'
 
 // Layer 2 — Google TTS, the fallback voice, plus the browser synthesizer that is
 // the last resort when every network voice has failed.
@@ -11,22 +11,22 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn())
 })
 
-describe('synthesizeSpeech', () => {
+describe('synthesizeWithGoogle', () => {
   it('returns the base64 audio', async () => {
     fetch.mockResolvedValue({ ok: true, json: async () => ({ audioContent: 'YWJj' }) })
-    await expect(synthesizeSpeech({ apiKey: 'g-key', text: 'Hello.' })).resolves.toBe('YWJj')
+    await expect(synthesizeWithGoogle({ apiKey: 'g-key', text: 'Hello.' })).resolves.toBe('YWJj')
   })
 
   it('passes the key in the query string', async () => {
     // Google TTS keys go in the URL, not a header — unlike every other service here.
     fetch.mockResolvedValue({ ok: true, json: async () => ({ audioContent: 'x' }) })
-    await synthesizeSpeech({ apiKey: 'g-key', text: 'Hello.' })
+    await synthesizeWithGoogle({ apiKey: 'g-key', text: 'Hello.' })
     expect(sentUrl()).toBe('https://texttospeech.googleapis.com/v1beta1/text:synthesize?key=g-key')
   })
 
   it('asks for MP3 in the philosopher voice, slightly slowed', async () => {
     fetch.mockResolvedValue({ ok: true, json: async () => ({ audioContent: 'x' }) })
-    await synthesizeSpeech({ apiKey: 'g-key', text: 'Hello.' })
+    await synthesizeWithGoogle({ apiKey: 'g-key', text: 'Hello.' })
 
     expect(sentBody()).toEqual({
       input: { text: 'Hello.' },
@@ -41,7 +41,7 @@ describe('synthesizeSpeech', () => {
       status: 403,
       json: async () => ({ error: { message: 'API key not valid' } }),
     })
-    await expect(synthesizeSpeech({ apiKey: 'bad', text: 'Hello.' })).rejects.toThrow(
+    await expect(synthesizeWithGoogle({ apiKey: 'bad', text: 'Hello.' })).rejects.toThrow(
       'API key not valid',
     )
   })
@@ -54,7 +54,7 @@ describe('synthesizeSpeech', () => {
         throw new Error('not json')
       },
     })
-    await expect(synthesizeSpeech({ apiKey: 'g-key', text: 'Hello.' })).rejects.toThrow(
+    await expect(synthesizeWithGoogle({ apiKey: 'g-key', text: 'Hello.' })).rejects.toThrow(
       'TTS error: 500',
     )
   })

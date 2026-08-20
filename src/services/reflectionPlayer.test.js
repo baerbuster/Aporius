@@ -11,7 +11,7 @@ const useAudioContext = (overrides) => {
 
 // The AudioContext is a module-level singleton created lazily on the first clip,
 // so each test re-imports to get a clean one.
-let playMurmur
+let playReflection
 
 // jsdom's Audio cannot play anything, and nothing fires `onended` on its own.
 // This stands in so a test can decide exactly when a clip finishes.
@@ -44,16 +44,16 @@ beforeEach(async () => {
   FakeAudio.instances = []
   vi.stubGlobal('Audio', FakeAudio)
   vi.resetModules()
-  ;({ playMurmur } = await import('./murmurPlayer'))
+  ;({ playReflection } = await import('./reflectionPlayer'))
 })
 
 afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('playMurmur', () => {
+describe('playReflection', () => {
   it('resolves when the clip ends', async () => {
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
     audio().end()
     await expect(playing).resolves.toBeUndefined()
   })
@@ -61,7 +61,7 @@ describe('playMurmur', () => {
   it('plays slowed down without dropping the pitch', async () => {
     // preservesPitch is the difference between "slower" and "a demon". The two
     // vendor spellings are still needed on Safari and older Firefox.
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
 
     expect(audio().playbackRate).toBe(0.85)
     expect(audio().preservesPitch).toBe(true)
@@ -75,7 +75,7 @@ describe('playMurmur', () => {
   it('routes through gain and panner rather than the element volume', async () => {
     // An element routed into an AudioContext stops honouring its own `volume`,
     // so level has to move to the gain node.
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
     const ctx = window.AudioContext.mock.results[0].value
 
     expect(ctx.createMediaElementSource).toHaveBeenCalledWith(audio())
@@ -87,7 +87,7 @@ describe('playMurmur', () => {
   })
 
   it('scatters clips across the stereo field', async () => {
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
     const ctx = window.AudioContext.mock.results[0].value
     const pan = ctx.createStereoPanner.mock.results[0].value.pan.value
 
@@ -98,11 +98,11 @@ describe('playMurmur', () => {
   })
 
   it('reuses one AudioContext for the app lifetime', async () => {
-    const first = playMurmur('blob:one')
+    const first = playReflection('blob:one')
     audio().end()
     await first
 
-    const second = playMurmur('blob:two')
+    const second = playReflection('blob:two')
     audio().end()
     await second
 
@@ -112,7 +112,7 @@ describe('playMurmur', () => {
   it('resumes a context the browser suspended', async () => {
     useAudioContext({ state: 'suspended' })
 
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
     expect(window.AudioContext.mock.results[0].value.resume).toHaveBeenCalled()
 
     audio().end()
@@ -120,7 +120,7 @@ describe('playMurmur', () => {
   })
 
   it('unwinds the graph once the clip is done', async () => {
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
     const ctx = window.AudioContext.mock.results[0].value
     const gain = ctx.createGain.mock.results[0].value
 
@@ -136,7 +136,7 @@ describe('playMurmur', () => {
     // than falling over.
     useAudioContext({ createStereoPanner: undefined })
 
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
     expect(audio().played).toBe(true)
 
     audio().end()
@@ -147,7 +147,7 @@ describe('playMurmur', () => {
     delete window.AudioContext
     delete window.webkitAudioContext
 
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
     expect(audio().volume).toBe(0.9)
 
     audio().end()
@@ -162,7 +162,7 @@ describe('playMurmur', () => {
       },
     })
 
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
     expect(audio().volume).toBe(0.9)
 
     audio().end()
@@ -172,7 +172,7 @@ describe('playMurmur', () => {
   it('resolves when the clip errors, rather than hanging the turn', async () => {
     // Every caller awaits this. A clip that never resolves would freeze playback
     // mid-turn with no error anywhere.
-    const playing = playMurmur('blob:clip')
+    const playing = playReflection('blob:clip')
     audio().fail()
     await expect(playing).resolves.toBeUndefined()
   })
@@ -180,7 +180,7 @@ describe('playMurmur', () => {
   it('resolves when playback is refused outright', async () => {
     FakeAudio.prototype.playRejects = true
     try {
-      await expect(playMurmur('blob:clip')).resolves.toBeUndefined()
+      await expect(playReflection('blob:clip')).resolves.toBeUndefined()
     } finally {
       delete FakeAudio.prototype.playRejects
     }

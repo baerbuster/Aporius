@@ -11,8 +11,8 @@ import {
 // Layer 1 — the validation guard and its helpers.
 //
 // This is the place a bug hides in total silence: a guard that is too loose lets
-// an invented sentence through and Aporius murmurs something the speaker never
-// said; a guard that is too tight rejects every reflection and every murmur
+// an invented sentence through and Aporius reflects something the speaker never
+// said; a guard that is too tight rejects every reflection and the reflected line
 // silently becomes the trimmed original. Neither throws. Neither logs an error a
 // user would ever see. So it gets pinned here.
 
@@ -85,7 +85,7 @@ describe('passesGuard', () => {
     // Pins the 2026-07-29 prompt switch. When the prompt spoke in they-form,
     // "they" was in BASE_ALLOWED; it was removed when the prompt moved to
     // you-form. If someone re-adds it without switching the prompt back, this
-    // fails loudly instead of the murmurs quietly changing person.
+    // fails loudly instead of the reflections quietly changing person.
     expect(passesGuard('I am tired.', 'They are tired.')).toBe(false)
   })
 

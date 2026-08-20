@@ -6,20 +6,20 @@ import { useAudioCapture } from '../../hooks/useAudioCapture'
 import { useConversation } from '../../hooks/useConversation'
 import { sendToClaude } from '../../services/claude'
 import { sendToGroq } from '../../services/groq'
-import { synthesizeSpeech as elevenLabsSynthesize, ElevenLabsQuotaError } from '../../services/elevenlabs'
+import { synthesizeWithElevenLabs, ElevenLabsQuotaError } from '../../services/elevenlabs'
 import {
-  synthesizeSpeech as googleSynthesize,
+  synthesizeWithGoogle,
   base64ToAudioBlob,
   speakWithBrowserTTS,
 } from '../../services/googleTTS'
 import { createLiveSentenceStream } from '../../services/deepgram'
 import { createReflectionStream } from '../../services/reflectionStream'
 import { prime as primeThinkingSounds, next as nextThinkingSound } from '../../services/thinkingSounds'
-import { playMurmur } from '../../services/murmurPlayer'
+import { playReflection } from '../../services/reflectionPlayer'
 
 // Layer 4 — the turn flow, with every collaborator faked.
 //
-// This is the layer that can only be tested here: the ordering, the murmurs-vs-
+// This is the layer that can only be tested here: the ordering, the reflections-vs-
 // Claude race, and the TTS fallback chain are all decisions MainScreen makes, and
 // none of them live in a module that can be imported on its own.
 //
@@ -34,9 +34,9 @@ vi.mock('../../services/groq', () => ({ sendToGroq: vi.fn() }))
 vi.mock('../../services/deepgram', () => ({ createLiveSentenceStream: vi.fn() }))
 vi.mock('../../services/reflectionStream', () => ({ createReflectionStream: vi.fn() }))
 vi.mock('../../services/thinkingSounds', () => ({ prime: vi.fn(), next: vi.fn() }))
-vi.mock('../../services/murmurPlayer', () => ({ playMurmur: vi.fn() }))
+vi.mock('../../services/reflectionPlayer', () => ({ playReflection: vi.fn() }))
 vi.mock('../../services/googleTTS', () => ({
-  synthesizeSpeech: vi.fn(),
+  synthesizeWithGoogle: vi.fn(),
   base64ToAudioBlob: vi.fn(),
   speakWithBrowserTTS: vi.fn(),
 }))
@@ -44,7 +44,7 @@ vi.mock('../../services/googleTTS', () => ({
 // error type, so a stand-in class would make the fallback test prove nothing.
 vi.mock('../../services/elevenlabs', async (importOriginal) => ({
   ...(await importOriginal()),
-  synthesizeSpeech: vi.fn(),
+  synthesizeWithElevenLabs: vi.fn(),
 }))
 
 // ── Test doubles ──────────────────────────────────────────
@@ -148,31 +148,31 @@ const moduleMocks = [
   useConversation,
   sendToClaude,
   sendToGroq,
-  elevenLabsSynthesize,
-  googleSynthesize,
+  synthesizeWithElevenLabs,
+  synthesizeWithGoogle,
   base64ToAudioBlob,
   speakWithBrowserTTS,
   createLiveSentenceStream,
   createReflectionStream,
   primeThinkingSounds,
   nextThinkingSound,
-  playMurmur,
+  playReflection,
 ]
 
-// Hand playMurmur back one clip at a time. Playback and the Claude call race each
+// Hand playReflection back one clip at a time. Playback and the Claude call race each
 // other by design, so a test that needs a specific interleaving has to drive the
 // clock rather than hope for it.
 function gatePlayback() {
   const pending = []
-  playMurmur.mockImplementation(() => new Promise((resolve) => pending.push(resolve)))
+  playReflection.mockImplementation(() => new Promise((resolve) => pending.push(resolve)))
   return {
-    // Wait for the nth playMurmur call to have started, then let it finish.
+    // Wait for the nth playReflection call to have started, then let it finish.
     async release(n) {
       await waitFor(() => expect(pending.length).toBeGreaterThan(n))
       await act(async () => { pending[n]() })
     },
     get count() {
-      return playMurmur.mock.calls.length
+      return playReflection.mock.calls.length
     },
   }
 }
@@ -206,12 +206,12 @@ beforeEach(() => {
 
   primeThinkingSounds.mockResolvedValue([])
   nextThinkingSound.mockReturnValue(null)
-  playMurmur.mockResolvedValue(undefined)
+  playReflection.mockResolvedValue(undefined)
 
   sendToClaude.mockResolvedValue('Virtue is a habit.')
   sendToGroq.mockResolvedValue('Virtue is a habit, said the llama.')
-  elevenLabsSynthesize.mockResolvedValue(new Blob(['mp3']))
-  googleSynthesize.mockResolvedValue('YWJj')
+  synthesizeWithElevenLabs.mockResolvedValue(new Blob(['mp3']))
+  synthesizeWithGoogle.mockResolvedValue('YWJj')
   base64ToAudioBlob.mockReturnValue(new Blob(['mp3']))
 })
 
@@ -306,7 +306,7 @@ describe('a complete turn', () => {
     expect(live.stop).toHaveBeenCalled()
     expect(capture.stopCaptureAndGetTranscript).toHaveBeenCalled()
     expect(sendToClaude).toHaveBeenCalled()
-    expect(elevenLabsSynthesize).toHaveBeenCalledWith(
+    expect(synthesizeWithElevenLabs).toHaveBeenCalledWith(
       expect.objectContaining({ text: 'Virtue is a habit.' }),
     )
   })
@@ -445,7 +445,7 @@ describe('model routing', () => {
   })
 })
 
-// ── The murmurs, and their race against Claude ────────────
+// ── The reflections, and their race against Claude ────────────
 
 describe('the reflection playback', () => {
   it('always opens with a thinking sound', async () => {
@@ -458,7 +458,7 @@ describe('the reflection playback', () => {
     reflection._drain()
     speak()
 
-    await waitFor(() => expect(playMurmur).toHaveBeenCalledWith('blob:hmm'))
+    await waitFor(() => expect(playReflection).toHaveBeenCalledWith('blob:hmm'))
   })
 
   it('plays the ranked clips while Claude is still thinking', async () => {
@@ -470,8 +470,8 @@ describe('the reflection playback', () => {
     await mount()
     speak()
 
-    await waitFor(() => expect(playMurmur).toHaveBeenCalledWith('blob:clip-0'))
-    await waitFor(() => expect(playMurmur).toHaveBeenCalledWith('blob:clip-1'))
+    await waitFor(() => expect(playReflection).toHaveBeenCalledWith('blob:clip-0'))
+    await waitFor(() => expect(playReflection).toHaveBeenCalledWith('blob:clip-1'))
 
     await act(async () => { release('Virtue is a habit.') })
   })
@@ -491,15 +491,15 @@ describe('the reflection playback', () => {
     speak()
 
     await gate.release(0) // the opener
-    await waitFor(() => expect(playMurmur).toHaveBeenCalledWith('blob:clip-0'))
+    await waitFor(() => expect(playReflection).toHaveBeenCalledWith('blob:clip-0'))
 
     // Claude lands while the first clip is still playing.
     await act(async () => { release('Virtue is a habit.') })
     await gate.release(1)
 
     await waitFor(() => expect(lastAudio()?.played).toBe(true))
-    expect(playMurmur).not.toHaveBeenCalledWith('blob:clip-1')
-    expect(playMurmur).not.toHaveBeenCalledWith('blob:clip-2')
+    expect(playReflection).not.toHaveBeenCalledWith('blob:clip-1')
+    expect(playReflection).not.toHaveBeenCalledWith('blob:clip-2')
   })
 
   it('drops a beat of thought when the profundity swings hard', async () => {
@@ -514,9 +514,9 @@ describe('the reflection playback', () => {
     await mount()
     speak()
 
-    await waitFor(() => expect(playMurmur).toHaveBeenCalledWith('blob:clip-1'))
+    await waitFor(() => expect(playReflection).toHaveBeenCalledWith('blob:clip-1'))
 
-    const order = playMurmur.mock.calls.map((c) => c[0])
+    const order = playReflection.mock.calls.map((c) => c[0])
     expect(order).toEqual(['blob:hmm', 'blob:clip-0', 'blob:hmm', 'blob:clip-1'])
 
     await act(async () => { release('Virtue is a habit.') })
@@ -532,9 +532,9 @@ describe('the reflection playback', () => {
     await mount()
     speak()
 
-    await waitFor(() => expect(playMurmur).toHaveBeenCalledWith('blob:clip-1'))
+    await waitFor(() => expect(playReflection).toHaveBeenCalledWith('blob:clip-1'))
 
-    const order = playMurmur.mock.calls.map((c) => c[0])
+    const order = playReflection.mock.calls.map((c) => c[0])
     expect(order).toEqual(['blob:hmm', 'blob:clip-0', 'blob:clip-1'])
 
     await act(async () => { release('Virtue is a habit.') })
@@ -549,10 +549,10 @@ describe('the reflection playback', () => {
     speak()
 
     await waitFor(() => expect(reflection.waitForAudio).toHaveBeenCalled())
-    expect(playMurmur).not.toHaveBeenCalledWith('blob:clip-0')
+    expect(playReflection).not.toHaveBeenCalledWith('blob:clip-0')
 
     await act(async () => { reflection._land(clip(0, 7)) })
-    await waitFor(() => expect(playMurmur).toHaveBeenCalledWith('blob:clip-0'))
+    await waitFor(() => expect(playReflection).toHaveBeenCalledWith('blob:clip-0'))
 
     await act(async () => { release('Virtue is a habit.') })
   })
@@ -564,20 +564,20 @@ describe('the reflection playback', () => {
     speak()
 
     await waitFor(() => expect(lastAudio()?.played).toBe(true))
-    expect(playMurmur).not.toHaveBeenCalledWith(expect.stringContaining('clip'))
+    expect(playReflection).not.toHaveBeenCalledWith(expect.stringContaining('clip'))
   })
 
   it('lets the last clip finish before speaking over it', async () => {
     // Claude's render overlaps the tail reflection; the reply waits for it.
     let finishClip
-    playMurmur.mockReturnValue(new Promise((r) => { finishClip = r }))
+    playReflection.mockReturnValue(new Promise((r) => { finishClip = r }))
     reflection = fakeReflectionStream([clip(0, 9)])
     createReflectionStream.mockReturnValue(reflection)
 
     await mount()
     speak()
 
-    await waitFor(() => expect(playMurmur).toHaveBeenCalledWith('blob:clip-0'))
+    await waitFor(() => expect(playReflection).toHaveBeenCalledWith('blob:clip-0'))
     expect(lastAudio()?.played).toBeUndefined()
 
     await act(async () => { finishClip() })
@@ -737,13 +737,13 @@ describe('when Claude fails', () => {
 
 describe('the TTS fallback chain', () => {
   it('falls back to Google when the ElevenLabs quota runs dry', async () => {
-    elevenLabsSynthesize.mockRejectedValue(new ElevenLabsQuotaError('quota'))
+    synthesizeWithElevenLabs.mockRejectedValue(new ElevenLabsQuotaError('quota'))
 
     await mount()
     reflection._drain()
     speak()
 
-    await waitFor(() => expect(googleSynthesize).toHaveBeenCalledWith({
+    await waitFor(() => expect(synthesizeWithGoogle).toHaveBeenCalledWith({
       apiKey: 'g-key',
       text: 'Virtue is a habit.',
     }))
@@ -754,7 +754,7 @@ describe('the TTS fallback chain', () => {
   it('does not fall back on an error that is not a quota error', async () => {
     // A transient blip should be retried, not spent on the Google budget.
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    elevenLabsSynthesize.mockRejectedValue(new Error('503'))
+    synthesizeWithElevenLabs.mockRejectedValue(new Error('503'))
 
     await mount()
     reflection._drain()
@@ -762,14 +762,14 @@ describe('the TTS fallback chain', () => {
 
     await act(async () => { await vi.advanceTimersByTimeAsync(3000) })
 
-    expect(googleSynthesize).not.toHaveBeenCalled()
-    expect(elevenLabsSynthesize).toHaveBeenCalledTimes(3)
+    expect(synthesizeWithGoogle).not.toHaveBeenCalled()
+    expect(synthesizeWithElevenLabs).toHaveBeenCalledTimes(3)
   })
 
   it('drops to the browser voice when both services fail', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    elevenLabsSynthesize.mockRejectedValue(new ElevenLabsQuotaError('quota'))
-    googleSynthesize.mockRejectedValue(new Error('403'))
+    synthesizeWithElevenLabs.mockRejectedValue(new ElevenLabsQuotaError('quota'))
+    synthesizeWithGoogle.mockRejectedValue(new Error('403'))
 
     await mount()
     reflection._drain()
@@ -788,8 +788,8 @@ describe('the TTS fallback chain', () => {
     // The words were said; losing them because the voice was ugly would be worse
     // than the ugly voice.
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    elevenLabsSynthesize.mockRejectedValue(new ElevenLabsQuotaError('quota'))
-    googleSynthesize.mockRejectedValue(new Error('403'))
+    synthesizeWithElevenLabs.mockRejectedValue(new ElevenLabsQuotaError('quota'))
+    synthesizeWithGoogle.mockRejectedValue(new Error('403'))
 
     await mount()
     reflection._drain()
@@ -811,11 +811,11 @@ describe('the synthesizer handed to the reflection stream', () => {
   // reflection stream reaches it: through the injected callback.
   const injected = () => createReflectionStream.mock.calls[0][0].synthesize
 
-  it('renders murmurs through ElevenLabs in the reflection voice', async () => {
+  it('renders reflections through ElevenLabs in the reflection voice', async () => {
     await mount()
     await injected()('You are tired.')
 
-    expect(elevenLabsSynthesize).toHaveBeenCalledWith({
+    expect(synthesizeWithElevenLabs).toHaveBeenCalledWith({
       apiKey: 'xi',
       text: 'You are tired.',
       voiceSettings: { stability: 0.9, style: 0, similarity_boost: 0.4 },
@@ -831,21 +831,21 @@ describe('the synthesizer handed to the reflection stream', () => {
   })
 
   it('falls through to Google on a quota error', async () => {
-    elevenLabsSynthesize.mockRejectedValue(new ElevenLabsQuotaError('quota'))
+    synthesizeWithElevenLabs.mockRejectedValue(new ElevenLabsQuotaError('quota'))
 
     await mount()
     const audio = await injected()('You are tired.')
 
-    expect(googleSynthesize).toHaveBeenCalledWith({ apiKey: 'g-key', text: 'You are tired.' })
+    expect(synthesizeWithGoogle).toHaveBeenCalledWith({ apiKey: 'g-key', text: 'You are tired.' })
     expect(audio.url).toMatch(/^blob:aporius\//)
   })
 
   it('rethrows anything that is not a quota error', async () => {
-    elevenLabsSynthesize.mockRejectedValue(new Error('503'))
+    synthesizeWithElevenLabs.mockRejectedValue(new Error('503'))
 
     await mount()
     await expect(injected()('You are tired.')).rejects.toThrow('503')
-    expect(googleSynthesize).not.toHaveBeenCalled()
+    expect(synthesizeWithGoogle).not.toHaveBeenCalled()
   })
 })
 
@@ -879,7 +879,7 @@ describe('the error overlay', () => {
       "I didn't quite catch that, could you repeat yourself?",
       expect.any(Function),
     ))
-    expect(elevenLabsSynthesize).not.toHaveBeenCalled()
+    expect(synthesizeWithElevenLabs).not.toHaveBeenCalled()
   })
 })
 
@@ -924,7 +924,7 @@ describe('when a call hangs rather than failing', () => {
     // A shorter ceiling than Claude's — 15s, because the reply is already written
     // and the user is sitting in silence waiting to hear it.
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    elevenLabsSynthesize.mockReturnValue(new Promise(() => {}))
+    synthesizeWithElevenLabs.mockReturnValue(new Promise(() => {}))
 
     await mount()
     reflection._drain()
@@ -932,7 +932,7 @@ describe('when a call hangs rather than failing', () => {
 
     await act(async () => { await vi.advanceTimersByTimeAsync(3 * 15000 + 2 * 1000) })
 
-    expect(elevenLabsSynthesize).toHaveBeenCalledTimes(3)
+    expect(synthesizeWithElevenLabs).toHaveBeenCalledTimes(3)
     await waitFor(() => expect(speakWithBrowserTTS).toHaveBeenCalledWith(
       'Virtue is a habit.',
       expect.any(Function),
@@ -990,7 +990,7 @@ describe('a turn that ends while Deepgram is still flushing', () => {
 describe('the captured audio', () => {
   it('fans out to Deepgram as well as to the Whisper buffer', async () => {
     // The same 16kHz PCM feeds both paths. If this wiring breaks, the batch
-    // transcript still works and only the murmurs go silent — a failure with no
+    // transcript still works and only the reflections go silent — a failure with no
     // error attached to it.
     await mount()
     const { onAudioChunk, groqKey } = useAudioCapture.mock.calls.at(-1)[0]
@@ -1018,7 +1018,7 @@ describe('speaking an error aloud', () => {
     reflection._drain()
     speak()
 
-    await waitFor(() => expect(elevenLabsSynthesize).toHaveBeenCalledWith(
+    await waitFor(() => expect(synthesizeWithElevenLabs).toHaveBeenCalledWith(
       expect.objectContaining({ text: "I didn't quite catch that, could you repeat yourself?" }),
     ))
     await waitFor(() => expect(lastAudio()?.played).toBe(true))
@@ -1060,7 +1060,7 @@ describe('speaking an error aloud', () => {
   it('drops to the browser voice when the error cannot be rendered at all', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     failTranscription()
-    elevenLabsSynthesize.mockRejectedValue(new Error('503'))
+    synthesizeWithElevenLabs.mockRejectedValue(new Error('503'))
 
     await mount()
     reflection._drain()
@@ -1085,8 +1085,8 @@ describe('after the browser voice finishes', () => {
 
   it('returns to listening after a TTS failure was read aloud', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
-    elevenLabsSynthesize.mockRejectedValue(new ElevenLabsQuotaError('quota'))
-    googleSynthesize.mockRejectedValue(new Error('403'))
+    synthesizeWithElevenLabs.mockRejectedValue(new ElevenLabsQuotaError('quota'))
+    synthesizeWithGoogle.mockRejectedValue(new Error('403'))
 
     await mount()
     reflection._drain()

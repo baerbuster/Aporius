@@ -8,7 +8,7 @@ A voice-only philosophical interlocutor. You talk out loud to a Greek philosophe
 
 An LLM takes seconds to answer. In text that's a spinner. In a voice conversation it's dead air — and dead air after someone has just finished saying something difficult reads as *nobody is there.*
 
-So Aporius doesn't wait in silence. While he's thinking, **he murmurs your own sentences back at you, in his own voice** — turned into second person, ranked by how substantial they were, most substantial first, with half-vocalised thinking sounds between them.
+So Aporius doesn't wait in silence. While he's thinking, **he reflects your own sentences back at you, in his own voice** — turned into second person, ranked by how substantial they were, most substantial first, with half-vocalised thinking sounds between them.
 
 > You say: *"I keep starting things and abandoning them, and I don't know if that's fear or just boredom."*
 >
@@ -42,12 +42,12 @@ Two independent speech-to-text pipelines run off the same microphone, and they r
         │
    ElevenLabs render
         │
-   plays after the murmurs finish
+   plays after the reflections finish
 ```
 
-The left pipeline is the conversation. The right pipeline is the murmurs. They share only the raw audio chunks, and neither waits on the other.
+The left pipeline is the conversation. The right pipeline is the reflections. They share only the raw audio chunks, and neither waits on the other.
 
-**The race is the design.** Fast reply, few murmurs. Slow reply, more murmurs. The first clip always plays, so a turn never opens in silence — and if nothing has rendered yet, a pre-rendered thinking sound covers exactly that gap.
+**The race is the design.** Fast reply, few reflections. Slow reply, more reflections. The first clip always plays, so a turn never opens in silence — and if nothing has rendered yet, a pre-rendered thinking sound covers exactly that gap.
 
 Full mechanism — the validation guard, the two serial queues, the profundity-gap rule, Deepgram's flush-on-close — is in **[docs/tech-spec.md](docs/tech-spec.md)**.
 
@@ -77,7 +77,7 @@ There's no hosted version and no shared key. On first run you land on a settings
 | Provider | Does what | Notes |
 |---|---|---|
 | **Groq** | Whisper `large-v3-turbo` — transcribes your finished thought | Generous free tier |
-| **Deepgram** | `nova-3` streaming — hears you *as you speak*, feeds the murmurs | Free credit on signup. Leave this out and the whole reflection half is silently dead |
+| **Deepgram** | `nova-3` streaming — hears you *as you speak*, feeds the reflections | Free credit on signup. Leave this out and the whole reflection half is silently dead |
 | **Anthropic** | The reply (Opus 4.6) **and** every reflection (Haiku 4.5) | One key, three paths. See cost below |
 | **ElevenLabs** | His voice | The main recurring cost, billed per character |
 | **Google Cloud TTS** | Fallback voice, only when ElevenLabs quota runs out | Effectively free at this volume |
@@ -104,7 +104,7 @@ One more, in the other direction: **trace logging is off by default** (`localSto
 src/
   components/screens/   Splash, Main, KnowThyself, ConversationHistory, PonderThis
   services/             deepgram · groq · claude · elevenlabs · googleTTS
-                        reflectionStream · thinkingSounds · murmurPlayer
+                        reflectionStream · thinkingSounds · reflectionPlayer
                         reflection-prompt · aporius-prompt   ← single sources
   hooks/                useAudioCapture · useConversation
   **/*.test.js(x)       the suite, beside what it tests

@@ -95,7 +95,7 @@ export function useAudioCapture({ groqKey, onAudioChunk }) {
 
     workletNode.port.onmessage = (event) => {
       localBufferRef.current.push(event.data)
-      // Same PCM fans out to the live (murmur-side) transcript. Must never
+      // Same PCM fans out to the live (reflection-side) transcript. Must never
       // interfere with the Groq batch path above.
       try {
         onAudioChunkRef.current?.(event.data)

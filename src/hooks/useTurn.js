@@ -4,13 +4,16 @@ import { useConversation } from './useConversation'
 import { useReflections } from './useReflections'
 import { withRetry, isOnline } from '../services/retry'
 import { sendToAI } from '../services/ai'
-import { synthesizeSpeech } from '../services/tts'
+import { synthesizerFor } from '../services/tts'
 import { speakWithBrowserTTS } from '../services/googleTTS'
 import { prime as primeThinkingSounds } from '../services/thinkingSounds'
 import { LISTENING_STATES } from '../components/screens/mainScreenStates'
+import { MESSAGES_KEY, SUMMARY_KEY } from '../settings'
 import { debug } from '../log'
 
 export function useTurn({ settings }) {
+  const synthesize = synthesizerFor(settings)
+
   const [appState, setAppState] = useState('IDLE')
   const [errorMsg, setErrorMsg] = useState(null)
   const [micError, setMicError] = useState(false)
@@ -21,8 +24,10 @@ export function useTurn({ settings }) {
 
   const { addTurn, checkAndSummarize, refresh } = useConversation()
 
-  const { startLive, stopLive, release, sendAudio, playPathBReflections, markClick } =
-    useReflections({ settings, abortRef })
+  // The reflection side gets a reader, never the ref: this file is the only one
+  // that may set the abort flag. See the note on useReflections.
+  const { startLive, stopLive, release, sendAudio, playReflections, markClick } =
+    useReflections({ settings, isAborted: () => abortRef.current })
 
   const { startCapture, stopCaptureAndGetTranscript, cleanup } = useAudioCapture({
     groqKey: settings.groqKey,
@@ -37,15 +42,7 @@ export function useTurn({ settings }) {
     // Render the thinking sounds once per app open, in the background. The
     // singleton makes this free on remount, so revisiting settings or history
     // costs nothing. Never released here — these clips are app-lifetime.
-    primeThinkingSounds({
-      synthesize: (text, voiceSettings) =>
-        synthesizeSpeech({
-          elevenLabsKey: settings.elevenLabsKey,
-          googleTTSKey: settings.googleTTSKey,
-          text,
-          voiceSettings,
-        }),
-    })
+    primeThinkingSounds({ synthesize })
 
     const init = async () => {
       try {
@@ -98,7 +95,7 @@ export function useTurn({ settings }) {
     setErrorMsg(text)
     if (!isOnline()) { speakWithBrowserTTS(text, () => {}); return }
     try {
-      const { url } = await synthesizeSpeech({ elevenLabsKey: settings.elevenLabsKey, googleTTSKey: settings.googleTTSKey, text })
+      const { url } = await synthesize(text)
       const audio = new Audio(url)
       audio.onended = () => URL.revokeObjectURL(url)
       audio.play().catch(() => speakWithBrowserTTS(text, () => {}))
@@ -124,7 +121,8 @@ export function useTurn({ settings }) {
     // ── 2. Reflections start NOW ───────────────────────────
     // In parallel with transcription, not after it. The clips are already
     // rendered and none of this needs the transcript — that dependency belonged
-    // to Path A, which is gone. claudeDone doubles as the stop signal: the
+    // to an earlier design that waited for it, now deleted. claudeDone doubles
+    // as the stop signal: the
     // boolean for the loop's checks, the promise so a waiting loop can be woken
     // the instant the response lands.
     let claudeDone = false
@@ -133,7 +131,7 @@ export function useTurn({ settings }) {
     const markClaudeDone = () => { claudeDone = true; signalClaudeDone() }
 
     setAppState('REFLECTING')
-    const reflectionPromise = playPathBReflections(() => claudeDone, claudeDonePromise)
+    const reflectionPromise = playReflections(() => claudeDone, claudeDonePromise)
 
     // Reflections now outlive the step that starts them, so every exit below
     // has to stop the loop and let the current clip finish — otherwise its
@@ -172,8 +170,8 @@ export function useTurn({ settings }) {
     debug(`[Listen stage] ${((performance.now() - listenStart) / 1000).toFixed(2)}s`)
 
     // ── 4. Fire Claude immediately in background ───────────
-    const currentMessages = JSON.parse(localStorage.getItem('aporius_messages') || '[]')
-    const currentSummary = localStorage.getItem('aporius_summary') || ''
+    const currentMessages = JSON.parse(localStorage.getItem(MESSAGES_KEY) || '[]')
+    const currentSummary = localStorage.getItem(SUMMARY_KEY) || ''
     const claudeMessages = [...currentMessages, { role: 'user', content: transcript }]
 
     const claudeStart = performance.now()
@@ -215,11 +213,7 @@ export function useTurn({ settings }) {
 
     try {
       ttsResult = await withRetry(
-        () => synthesizeSpeech({
-          elevenLabsKey: settings.elevenLabsKey,
-          googleTTSKey: settings.googleTTSKey,
-          text: claudeResponse,
-        }),
+        () => synthesize(claudeResponse),
         3,
         15000,
       )

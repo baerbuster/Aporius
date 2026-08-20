@@ -1,8 +1,6 @@
 import { useState, useCallback } from 'react'
 import { summarizeConversation } from '../services/claude'
-
-const SUMMARY_KEY = 'aporius_summary'
-const MESSAGES_KEY = 'aporius_messages'
+import { MESSAGES_KEY, SUMMARY_KEY } from '../settings'
 
 // Trigger summarization at ~80% of claude-opus-4-6's 200k context window
 const SUMMARIZE_TOKEN_THRESHOLD = 160000

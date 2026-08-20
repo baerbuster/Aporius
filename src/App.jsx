@@ -6,7 +6,7 @@ import ConversationHistory from './components/screens/ConversationHistory'
 import PonderThis from './components/screens/PonderThis'
 import { loadSettings, saveSettings } from './settings'
 
-// Deepgram is in here because the murmur side runs on it: MainScreen feeds this
+// Deepgram is in here because the reflection side runs on it: MainScreen feeds this
 // key straight to createLiveSentenceStream, which is what the reflection stream
 // consumes. Leave it out of the gate and a fresh device gets waved through to a
 // main screen whose entire reflection half is silently dead.

@@ -333,7 +333,7 @@ describe('sendAudio', () => {
 
   it('swallows a send that throws mid-stream', async () => {
     // A socket dying between the readyState check and the send is not
-    // load-bearing — the murmur path degrades, the turn continues.
+    // load-bearing — the reflection path degrades, the turn continues.
     const stream = await connected()
     socket().throwOnSend = true
     expect(() => stream.sendAudio('chunk')).not.toThrow()

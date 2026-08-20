@@ -23,7 +23,7 @@ describe('prime', () => {
     expect(synthesize).toHaveBeenCalledTimes(8)
   })
 
-  it('renders every clip in the murmuring voice', async () => {
+  it('renders every clip in the reflection voice', async () => {
     // Shared with the reflected sentences, so the whole reflection phase sounds
     // like one continuous act of thinking rather than two different voices.
     const synthesize = workingSynth()

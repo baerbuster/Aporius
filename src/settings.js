@@ -7,12 +7,18 @@
 //
 // Nothing else should reference 'aporius_settings' directly — import from here.
 //
-// Conversation state (aporius_messages / aporius_summary) is deliberately NOT
-// handled here. It has its own owner in hooks/useConversation.js, though raw
-// string literals for those keys still appear in MainScreen.jsx and
-// KnowThyself.jsx.
+// The two conversation keys live here as well, for the same reason: they were
+// spelled out by hand in four other files, and one of those kept a second copy
+// of the name. The *behaviour* around conversation state still belongs to
+// hooks/useConversation.js — only the key names are here. They sit in this file
+// rather than with their owner because the test suite replaces that hook
+// wholesale, which would leave anything importing the names from it holding
+// undefined.
 
 const SETTINGS_KEY = 'aporius_settings'
+
+export const MESSAGES_KEY = 'aporius_messages'
+export const SUMMARY_KEY = 'aporius_summary'
 
 // Missing or corrupt storage yields an empty object rather than throwing, so a
 // first run and a mangled blob both land on the settings screen instead of a

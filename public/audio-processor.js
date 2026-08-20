@@ -1,5 +1,6 @@
 // AudioWorklet processor — runs in audio rendering thread
-// Handles VAD (voice activity detection), downsampling to 16kHz, and PCM conversion
+// Handles downsampling to 16kHz and PCM conversion. There is no voice activity
+// detection here: every sample is converted and posted, silence included.
 
 class AudioProcessor extends AudioWorkletProcessor {
   constructor(options) {
@@ -8,10 +9,6 @@ class AudioProcessor extends AudioWorkletProcessor {
     this.sourceSampleRate = options.processorOptions?.sourceSampleRate || sampleRate
     this.targetSampleRate = 16000
     this.resampleRatio = this.sourceSampleRate / this.targetSampleRate
-
-    // Small resampling buffer to handle fractional ratios
-    this.resampleBuffer = []
-    this.resamplePhase = 0
   }
 
   process(inputs) {

@@ -1,6 +1,6 @@
 // The reflection phase's voice — everything Aporius says before he answers.
 //
-// That whole phase is him thinking aloud to himself: the murmurs AND the
+// That whole phase is him thinking aloud to himself: the thinking sounds AND the
 // speaker's own sentences turned over out loud. It is not addressed to anyone,
 // so it should not sound addressed to anyone. This gives all of it the same
 // treatment; his actual reply is the only thing that comes through at full
@@ -57,7 +57,7 @@ function connectGraph(ac, audio) {
 // Note an element routed into an AudioContext stops honouring its own `volume`,
 // so level is set on the gain node instead. If Web Audio is unavailable the clip
 // still plays, just dry — never silently dropped.
-export function playMurmur(url) {
+export function playReflection(url) {
   return new Promise((resolve) => {
     const audio = new Audio(url)
     audio.playbackRate = PLAYBACK_RATE
@@ -74,7 +74,7 @@ export function playMurmur(url) {
         if (ac.state === 'suspended') ac.resume()
         teardown = connectGraph(ac, audio)
       } catch (err) {
-        console.warn('[Murmur] filter unavailable, playing dry:', err?.message || err)
+        console.warn('[Reflect] filter unavailable, playing dry:', err?.message || err)
         audio.volume = GAIN
       }
     } else {

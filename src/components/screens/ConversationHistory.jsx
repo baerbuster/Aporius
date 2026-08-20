@@ -1,7 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { loadName } from '../../settings'
-
-const MESSAGES_KEY = 'aporius_messages'
+import { loadName, MESSAGES_KEY } from '../../settings'
 
 function loadMessages() {
   try {

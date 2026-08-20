@@ -39,7 +39,7 @@ beforeEach(() => {
   HTMLMediaElement.prototype.pause = vi.fn()
 
   // ── Web Audio ─────────────────────────────────────────────
-  // Just enough graph for murmurPlayer to wire up and tear down. A plain
+  // Just enough graph for reflectionPlayer to wire up and tear down. A plain
   // `function` rather than an arrow: the app calls `new AudioContext()`, and an
   // arrow cannot be constructed.
   window.AudioContext = vi.fn(function () {

@@ -3,22 +3,30 @@ import { REFLECTION_VOICE } from '../services/elevenlabs'
 import { createLiveSentenceStream } from '../services/deepgram'
 import { createReflectionStream } from '../services/reflectionStream'
 import { next as nextThinkingSound } from '../services/thinkingSounds'
-import { playMurmur } from '../services/murmurPlayer'
-import { synthesizeSpeech } from '../services/tts'
+import { playReflection } from '../services/reflectionPlayer'
+import { synthesizerFor } from '../services/tts'
 import { debug } from '../log'
 
 // A profundity gap wider than this earns a beat of thought between the two clips.
 // 0 = a sound between every clip; a large number = openers only.
 const THINKING_SOUND_GAP = 1
 
-export function useReflections({ settings, abortRef }) {
-  // ── Path B timing probe ─────────────────────────────────
+// `isAborted` is a reader, not the switch itself. The turn flow owns the one
+// "drop everything" flag — it is the only thing that may set it — and this file
+// only ever needs to ask whether it is set. Handing over a function instead of
+// the ref makes that a fact of the code rather than a rule in a comment: flipping
+// it from in here would abort the turn flow for no reason, and the symptom would
+// be audio cutting out at random.
+export function useReflections({ settings, isAborted }) {
+  const synthesize = synthesizerFor(settings)
+
+  // ── Reflection timing probe ─────────────────────────────
   // clickAtRef is stamped the instant "SPEAK, APORIUS!" is pressed and zeroed
   // when listening restarts, so a straggler clip landing in the NEXT turn can't
   // be measured against the previous turn's click. Two logs, each once per turn:
   //   READY   — a clip existed to play (fires even when playback found none)
   //   PLAYING — play() was actually called on the first clip
-  // When Path B bails, only READY fires, and its number is the gap that bail cost.
+  // When playback bails, only READY fires, and its number is the gap that bail cost.
   const clickAtRef = useRef(0)
   const firstReadyLoggedRef = useRef(false)
   const firstPlayLoggedRef = useRef(false)
@@ -32,26 +40,20 @@ export function useReflections({ settings, abortRef }) {
     reflectionRef.current = createReflectionStream({
       apiKey: settings.claudeKey,
       userName: settings.name,
-      synthesize: (text) =>
-        synthesizeSpeech({
-          elevenLabsKey: settings.elevenLabsKey,
-          googleTTSKey: settings.googleTTSKey,
-          text,
-          voiceSettings: REFLECTION_VOICE,
-        }),
+      synthesize: (text) => synthesize(text, REFLECTION_VOICE),
       onReflected: (entry) =>
         debug(`[Reflect ${entry.index}] p=${entry.profundity} "${entry.reflected}"`),
       onAudioReady: (entry) => {
         debug(`[Reflect ${entry.index}] audio ready, p=${entry.profundity}`)
         if (clickAtRef.current && !firstReadyLoggedRef.current) {
           firstReadyLoggedRef.current = true
-          debug(`[Path B] first clip READY ${sinceClick()}s after click`)
+          debug(`[Reflect] first clip READY ${sinceClick()}s after click`)
         }
       },
     })
   }
 
-  // ── Stage 1: live sentence list (murmur side, independent of Groq) ──
+  // ── Stage 1: live sentence list (reflection side, independent of Groq) ──
   const liveRef = useRef(null)
   if (!liveRef.current) {
     liveRef.current = createLiveSentenceStream({
@@ -105,12 +107,12 @@ export function useReflections({ settings, abortRef }) {
   const playThinkingSound = async (label) => {
     const url = nextThinkingSound()
     if (!url) return false
-    if (label) debug(`[Path B] ${label} ${sinceClick()}s after click`)
-    await playMurmur(url)
+    if (label) debug(`[Reflect] ${label} ${sinceClick()}s after click`)
+    await playReflection(url)
     return true
   }
 
-  // ── Path B reflection: play the clips rendered while listening ──
+  // ── Reflection playback: play the clips rendered while listening ──
   // Starts the instant the button is pressed, alongside transcription — the
   // clips were rendered from Deepgram's sentences while the user spoke, so the
   // top of the ranked list is already playable and nothing here needs the
@@ -120,7 +122,7 @@ export function useReflections({ settings, abortRef }) {
   // that renders mid-playback is in contention for the next slot at its true rank.
   // URLs are not revoked here — the stream owns them and releases them on the
   // next start().
-  const playPathBReflections = async (isClaudeDone, claudeDonePromise) => {
+  const playReflections = async (isClaudeDone, claudeDonePromise) => {
     const played = new Set()
     let first = true
     let lastProfundity = null
@@ -130,7 +132,7 @@ export function useReflections({ settings, abortRef }) {
     // short utterance used to start in silence.
     await playThinkingSound('opener PLAYING')
 
-    while (!abortRef.current) {
+    while (!isAborted()) {
       const next = reflectionRef.current
         .getAudioReflections()
         .find((e) => !played.has(e.index))
@@ -147,7 +149,7 @@ export function useReflections({ settings, abortRef }) {
           claudeDonePromise.then(() => false),
         ])
         if (!arrived) {
-          if (first) debug('[Path B] no clip to play')
+          if (first) debug('[Reflect] no clip to play')
           break
         }
         continue
@@ -164,18 +166,18 @@ export function useReflections({ settings, abortRef }) {
         lastProfundity !== null &&
         Math.abs(lastProfundity - next.profundity) > THINKING_SOUND_GAP
       ) {
-        debug(`[Path B] gap ${lastProfundity}→${next.profundity}, thinking`)
+        debug(`[Reflect] gap ${lastProfundity}→${next.profundity}, thinking`)
         await playThinkingSound()
-        if (abortRef.current) break
+        if (isAborted()) break
       }
 
       played.add(next.index)
       if (!firstPlayLoggedRef.current) {
         firstPlayLoggedRef.current = true
-        debug(`[Path B] first clip PLAYING ${sinceClick()}s after click`)
+        debug(`[Reflect] first clip PLAYING ${sinceClick()}s after click`)
       }
-      debug(`[Path B] playing p=${next.profundity} "${next.reflected}"`)
-      await playMurmur(next.audio.url)
+      debug(`[Reflect] playing p=${next.profundity} "${next.reflected}"`)
+      await playReflection(next.audio.url)
       lastProfundity = next.profundity
       first = false
     }
@@ -191,5 +193,5 @@ export function useReflections({ settings, abortRef }) {
     firstPlayLoggedRef.current = false
   }
 
-  return { startLive, stopLive, release, sendAudio, playPathBReflections, markClick }
+  return { startLive, stopLive, release, sendAudio, playReflections, markClick }
 }

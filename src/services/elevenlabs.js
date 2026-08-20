@@ -4,7 +4,8 @@ const MODEL_ID = 'eleven_turbo_v2_5'
 
 export class ElevenLabsQuotaError extends Error {}
 
-// The reflection phase's voice — murmurs and reflected sentences alike. Flatter
+// The reflection phase’s voice — thinking sounds and reflected sentences alike.
+// Flatter
 // and looser than his speaking reply, which uses the defaults below.
 //   stability 0.9        — near-monotone; he is not performing, he is muttering
 //   style 0              — no exaggeration at all
@@ -17,7 +18,7 @@ export const REFLECTION_VOICE = {
   similarity_boost: 0.4,
 }
 
-export async function synthesizeSpeech({ apiKey, text, voiceSettings = {} }) {
+export async function synthesizeWithElevenLabs({ apiKey, text, voiceSettings = {} }) {
   const response = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
     {

@@ -1,5 +1,7 @@
-// Google Cloud TTS
-// Voice: en-GB-Wavenet-B — deep British male, befitting a philosopher
+// Google Cloud TTS — the fallback voice, heard only when ElevenLabs is out of quota.
+// Voice: en-US-Neural2-D — American male. An earlier comment here claimed
+// en-GB-Wavenet-B, a deep British male; that voice is not what the constant below
+// asks for and has not been in use.
 
 const VOICE = {
   languageCode: 'en-US',
@@ -7,7 +9,7 @@ const VOICE = {
   ssmlGender: 'MALE',
 }
 
-export async function synthesizeSpeech({ apiKey, text }) {
+export async function synthesizeWithGoogle({ apiKey, text }) {
   const response = await fetch(
     `https://texttospeech.googleapis.com/v1beta1/text:synthesize?key=${apiKey}`,
     {

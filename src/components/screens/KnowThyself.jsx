@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MESSAGES_KEY, SUMMARY_KEY } from '../../settings'
 
 export default function KnowThyself({ settings, onSave, onBack }) {
   const [form, setForm] = useState({
@@ -20,8 +21,8 @@ export default function KnowThyself({ settings, onSave, onBack }) {
   }
 
   const handleBraindrainConfirm = () => {
-    localStorage.removeItem('aporius_summary')
-    localStorage.removeItem('aporius_messages')
+    localStorage.removeItem(SUMMARY_KEY)
+    localStorage.removeItem(MESSAGES_KEY)
     setShowBraindrain(false)
   }
 

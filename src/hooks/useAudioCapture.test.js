@@ -7,7 +7,7 @@ vi.mock('../services/groq', () => ({ transcribeAudio: vi.fn() }))
 
 // The capture path: microphone → AudioWorklet → 16kHz PCM chunks, which fan out
 // two ways at once. One copy accretes into a buffer that becomes the WAV posted
-// to Whisper; the other goes straight to Deepgram for the murmur side. Neither
+// to Whisper; the other goes straight to Deepgram for the reflection side. Neither
 // may interfere with the other.
 
 let context

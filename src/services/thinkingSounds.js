@@ -1,7 +1,7 @@
 import { debug } from '../log'
 // Thinking sounds — the character's connective tissue between reflections.
 //
-// A small pool of murmurs, rendered ONCE per app open and held as object URLs.
+// A small pool of wordless sounds, rendered ONCE per app open and held as object URLs.
 // Every turn opens with one, and one is dropped between two reflection clips
 // whose profundity scores are far apart, so a fall from something weighty to
 // something mundane gets a beat of thought instead of a hard cut.
@@ -17,7 +17,7 @@ import { debug } from '../log'
 //
 // This file only owns the pool and its rotation. Playback — the filter chain that
 // gives everything in the reflection phase its muffled quality — lives in
-// murmurPlayer.js, shared with the reflected sentences.
+// reflectionPlayer.js, shared with the reflected sentences.
 
 // The voice preset is shared too, so it can't shift mid-turn.
 import { REFLECTION_VOICE } from './elevenlabs'

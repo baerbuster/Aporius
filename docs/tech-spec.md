@@ -38,7 +38,7 @@ Greek philosopher who lives in a browser tab, and he answers in a voice.
 The thing that makes it more than a speech-to-LLM-to-speech loop is what happens
 in the gap. An LLM answer takes seconds to arrive, and seconds of silence after
 someone finishes speaking reads as dead air. Instead of filling that gap with a
-spinner, Aporius **murmurs the speaker's own sentences back at them, in his own
+spinner, Aporius **reflects the speaker's own sentences back at them, in his own
 voice, while he is still thinking** — turned into second person, ranked by how
 substantial they were, and played most-substantial-first, interleaved with
 half-vocalised thinking sounds.
@@ -117,14 +117,15 @@ Seven states, collapsing to three visible screens.
 | `IDLE` | Listening | initial, before the mic is up |
 | `BUFFERING` | Listening | mic hot, capturing |
 | `WAITING_FOR_TRANSCRIPT` | Thinking | button pressed, Groq transcribing |
-| `REFLECTING` | Thinking | murmurs playing, Claude thinking |
+| `REFLECTING` | Thinking | reflections playing, Claude thinking |
 | `SYNTHESIZING_SPEECH` | Thinking | rendering Aporius's reply |
 | `PLAYING_AUDIO` | Speaking | the reply is playing |
 | `ERROR` | Thinking | with a tap-to-dismiss overlay |
 
-Membership is defined by two Sets at the top of `MainScreen.jsx`:
-`LISTENING_STATES` and `THINKING_STATES`. The statue image and the laurel's
-spin are derived from those, so a state's screen is decided in one place.
+Membership is defined by two Sets in `components/screens/mainScreenStates.js`:
+`LISTENING_STATES` and `THINKING_STATES`, alongside `statueForState`. The statue
+image and the laurel's spin are derived from those, so a state's screen is
+decided in one place.
 
 **The button has two labels and they map to state, not to a mode.**
 `SPEAK, APORIUS!` shows in listening states; `LISTEN, APORIUS!` shows in every
@@ -158,36 +159,45 @@ This is the part the original design document has no concept of.
         │
    ElevenLabs render
         │
-   plays after murmurs finish
+   plays after reflections finish
 ```
 
-The left pipeline is the conversation. The right pipeline is the murmurs. They
+The left pipeline is the conversation. The right pipeline is the reflections. They
 share only the raw audio chunks; neither waits on the other.
 
-**Sequence, from `handleSpeakAporius`:**
+**Where the turn lives.** `MainScreen.jsx` is a 35-line container: it calls
+`useTurn` and renders `MainScreenView.jsx`. Everything below is in
+`hooks/useTurn.js` (state machine, mic lifecycle, the turn) and
+`hooks/useReflections.js` (both background streams and the playback loop), with
+`services/retry.js`, `services/ai.js` and `services/tts.js` holding the retry
+wrapper, the model routing and the TTS fallback chain respectively.
+
+**Sequence, from `handleSpeakAporius` in `hooks/useTurn.js`:**
 
 1. Mic stops. Deepgram is asked to flush (§7).
-2. **Murmur playback starts immediately** — `playPathBReflections` is called
+2. **Reflection playback starts immediately** — `playReflections` is called
    *before* transcription, not after. Nothing in it needs the transcript; the
    clips were rendered while the user was still talking.
 3. Groq transcribes the buffered WAV, concurrently.
-4. Claude is fired with the transcript and history, concurrently with murmurs
+4. Claude is fired with the transcript and history, concurrently with reflections
    still playing.
-5. Murmurs continue until Claude lands. `claudeDone` is both a boolean the loop
+5. Reflections continue until Claude lands. `claudeDone` is both a boolean the loop
    polls and a promise the loop can be woken by.
 6. Claude's reply is rendered to speech.
 7. The turn is saved; summarisation is checked.
-8. `finishReflections()` — the in-flight murmur clip is allowed to finish so the
+8. `finishReflections()` — the in-flight reflection clip is allowed to finish so the
    reply doesn't talk over it.
 9. The reply plays. On `ended`, the mic restarts.
 
-**The race is the design.** If Claude is fast, few murmurs play. If Claude is
+**The race is the design.** If Claude is fast, few reflections play. If Claude is
 slow, more play. The first clip always plays regardless, so a turn never starts
 in silence — and if no clip is ready yet, a pre-rendered thinking sound covers
 exactly that window.
 
 **`abortRef`** is checked after every await. `LISTEN, APORIUS!` sets it, which
-unwinds the whole flow wherever it happens to be.
+unwinds the whole flow wherever it happens to be. It lives in `useTurn.js`, the
+only file that may set it; `useReflections.js` receives an `isAborted()` reader
+instead of the ref, so the playback loop can stop on the flag but cannot raise it.
 
 ---
 
@@ -202,13 +212,13 @@ unwinds the whole flow wherever it happens to be.
   to int16, and `postMessage`s the buffer with a transfer list — zero-copy.
 - **Each chunk fans out twice:** appended to a local array for the Groq WAV, and
   handed to `onAudioChunk`, which feeds the Deepgram socket. The fan-out is
-  wrapped in try/catch: the murmur side must never break transcription.
+  wrapped in try/catch: the reflection side must never break transcription.
 - **On stop,** the chunks are wrapped in a 44-byte RIFF header by `encodeWAV` and
   POSTed to Groq as a single file.
 
-**There is no voice activity detection.** The worklet's own header comment claims
-it handles VAD and the original design specified a −40 dB threshold; neither is
-true. Every sample captured is buffered and sent.
+**There is no voice activity detection.** The original design specified a −40 dB
+threshold and the worklet's header comment used to claim it did VAD; neither was
+ever true. Every sample captured is buffered and sent. The comment now says so.
 
 ---
 
@@ -301,9 +311,9 @@ have drained — the only way a caller learns that no clip is ever coming.
 
 ## 10. Playback
 
-### Path B — the murmur loop
+### The reflection loop
 
-`playPathBReflections` in `MainScreen.jsx`.
+`playReflections` in `hooks/useReflections.js`.
 
 - **Always opens with a thinking sound**, before the first list read, covering
   the window where nothing has rendered yet.
@@ -332,9 +342,9 @@ rather than waiting for all eight.
 Rotation walks a shuffled order and reshuffles at the end, rejecting any order
 that would repeat the phrase just played.
 
-### The murmur player
+### The reflection player
 
-`services/murmurPlayer.js`. Everything in the reflection phase — murmurs and
+`services/reflectionPlayer.js`. Everything in the reflection phase — thinking sounds and
 reflected sentences alike — plays through one chain: `<audio>` → panner → gain →
 speakers. Gain 0.9, playback rate 0.85 with pitch preserved, random pan within
 ±0.35.
@@ -356,7 +366,7 @@ directly from the browser.
 | Provider | Used for | Model / endpoint |
 |---|---|---|
 | **Groq Whisper** | batch STT — the transcript | `whisper-large-v3-turbo` |
-| **Deepgram** | streaming STT — the murmur sentences | `nova-3` |
+| **Deepgram** | streaming STT — the reflection sentences | `nova-3` |
 | **Anthropic** | the reply, *and* every reflection | `claude-opus-4-6` default; `claude-haiku-4-5` for reflections |
 | **ElevenLabs** | the voice | `eleven_turbo_v2_5` |
 | **Google Cloud TTS** | fallback voice, on ElevenLabs quota | `en-US-Neural2-D` |
@@ -390,7 +400,10 @@ trade-off, not an oversight.
 
 One continuous conversation, surviving refresh, tab close and reopen.
 
-Two localStorage keys, owned by `hooks/useConversation.js`:
+Two localStorage keys. `hooks/useConversation.js` owns the behaviour — reading,
+appending, summarising, clearing. The key *names* are exported from
+`src/settings.js` alongside the settings key, so the four files that touch this
+storage cannot disagree about what it is called:
 
 - `aporius_messages` — recent turns as `{role, content}` objects
 - `aporius_summary` — an accumulating prose summary of older turns
@@ -411,10 +424,12 @@ confirmation overlay — removes both keys.
 
 ## 13. Settings and storage
 
-`src/settings.js` is the only module that knows the `aporius_settings` key.
-`loadSettings` and `loadName` return safe defaults (`{}` and `'Seeker'`) for both
-missing and corrupt storage, so a first run and a mangled blob both land on the
-settings screen rather than a white page.
+`src/settings.js` is the only module that knows the `aporius_settings` key, and
+is also where the two conversation key names are declared (§12) — every
+localStorage name in the app is in that one file. `loadSettings` and `loadName`
+return safe defaults (`{}` and `'Seeker'`) for both missing and corrupt storage,
+so a first run and a mangled blob both land on the settings screen rather than a
+white page.
 
 The settings screen holds six fields plus a model dropdown: the display name,
 and the five keys — two under a single *"By what right can you hear?"* heading,
@@ -447,7 +462,7 @@ failure is indistinguishable from Aporius ignoring you.
 waits 1s between attempts.
 
 **Reflection failures are never surfaced.** A failed Haiku call falls back to the
-trimmed original; a failed render just means one fewer murmur. The murmur layer
+trimmed original; a failed render just means one fewer reflection. The reflection layer
 is enhancement, and it degrades quietly by design.
 
 ---
@@ -479,19 +494,32 @@ they actually get read.
 
 Recorded here so the document does not read as more finished than it is.
 
-- **No CI.** The suite exists (Vitest, `npm test`, 380 tests, everything mocked) but
+- **On mobile, reflections play with a tremolo on them.** Broken up, as though
+  wobbling. The same code on the desktop build does not do it. Unexplained and
+  uninvestigated. The reply audio is not reported as affected — only the
+  reflection phase, which is the only audio routed through the Web Audio chain in
+  §10 and the only audio played at a reduced rate.
+- **No CI.** The suite exists (Vitest, `npm test`, 422 tests, everything mocked) but
   nothing runs it on push, so nothing proves the project builds from a clean clone.
-- **Coverage is 96% of statements but thinner where it matters most.** `MainScreen`'s
-  retry *timeouts*, the session guard in `stopLive`, and the audio fan-out to Deepgram
-  have no test. A green run is not proof the turn flow is sound.
-- **`MainScreen.jsx` is 615 lines**, owning the state machine, mic lifecycle,
-  both pipelines, retry logic, the TTS fallback chain and rendering.
-- **Two stale comments in the code contradict the code around them:**
-  `public/audio-processor.js` claims to do VAD, and `services/googleTTS.js`
-  claims a British WaveNet voice while the constant beneath it is
-  `en-US-Neural2-D`.
-- **`aporius_messages` and `aporius_summary` appear as raw string literals** in
-  `MainScreen.jsx` and `KnowThyself.jsx` rather than going through their owner.
+- **Coverage is 97.7% of statements and still blind where it matters most.**
+  Nothing in the suite hears anything. It runs with no microphone, no network and
+  no audio device, so every property that is actually about *sound* — two voices
+  overlapping, a clip cut off mid-word, a gap that reads as dead air — is
+  invisible to it. Demonstrated, not assumed: forcing the reflection loop's abort
+  check to always report "not aborted" leaves all 62 turn-flow tests passing.
+  A green run proves the logic ran in order. It proves nothing about the result.
+- **`public/audio-processor.js` has no test coverage at all.** It runs on the
+  AudioWorklet thread, which the jsdom environment cannot create. It is verified
+  only by talking to the app.
+- **Interrupting during a reflection is up to one clip late.** `LISTEN, APORIUS!`
+  stops the reply instantly — that element is tracked and paused directly — but a
+  reflection clip already playing runs to its end, because the loop only checks
+  the abort flag between clips and nothing holds a handle to the current clip.
+  Known and accepted, not a bug report.
+- **The persona prompt still calls the reflection phase "murmuring".** The word
+  was retired from the code, but `services/aporius-prompt.js` is instructions to
+  the model, not a name for a function: editing it changes how Aporius speaks and
+  no test would catch the difference. Left alone deliberately.
 - **No diagrams yet.** The pipeline in §5 wants a real state and flow diagram;
-  the ones in `docs/diagrams/` describe the pre-murmur architecture under an
+  the ones in `docs/diagrams/` describe the pre-reflection architecture under an
   older project name and should not be trusted.
