@@ -115,7 +115,7 @@ reflection-bias-test/       research log — see below
 docs/                       tech spec, original design doc, dock app
 ```
 
-**The suite is `npm test`.** Vitest, 380 tests, everything mocked — no API keys, no network, no microphone, so it costs nothing to run. `npm run test:coverage` for the report.
+**The suite is `npm test`.** Vitest, 422 tests across 21 files, everything mocked — no API keys, no network, no microphone, so it costs nothing to run. `npm run test:coverage` for the report.
 
 **`reflection-bias-test/` is a research log, not a test suite.** Fourteen harnesses that need live keys and make real paid calls; they're the instrument the reflection prompt was converged with over ten rounds. Good work, wrong category — don't mistake them for tests. That distinction is the whole reason the real suite lives beside the code instead of in there.
 
@@ -123,7 +123,7 @@ docs/                       tech spec, original design doc, dock app
 
 Personal project, actively used. Honest gaps, also recorded in [tech-spec.md §16](docs/tech-spec.md):
 
-- **No CI.** There is a test suite — 380 tests under Vitest, `npm test` — but nothing
+- **No CI.** There is a test suite — 422 tests under Vitest, `npm test` — but nothing
   runs it automatically on a clean clone.
 - `MainScreen.jsx` is 615 lines and owns more than it should.
 
