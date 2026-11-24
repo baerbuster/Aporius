@@ -2,6 +2,14 @@
 
 A voice-only philosophical interlocutor. You talk out loud to a Greek philosopher who lives in a browser tab, and he answers in a voice.
 
+<p align="center">
+  <a href="docs/assets/aporius-demo.mp4"><img src="docs/assets/aporius-demo-poster.png" alt="Aporius demo video: a 90-second conversation about causality" width="260"></a>
+</p>
+
+<p align="center"><b>▶ <a href="docs/assets/aporius-demo.mp4">Watch the 90-second demo</a></b> (sound on)</p>
+
+In the demo, before each answer he repeats my own words back in his voice. That's not a bug. While the real reply is still rendering, he reflects what you said so a turn never opens in silence. The next section explains why.
+
 ---
 
 ## The problem this is actually built around
